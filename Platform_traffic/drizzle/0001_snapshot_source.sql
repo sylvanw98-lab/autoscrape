@@ -1,1 +1,0 @@
-ALTER TABLE snapshots ADD COLUMN source TEXT NOT NULL DEFAULT 'web';

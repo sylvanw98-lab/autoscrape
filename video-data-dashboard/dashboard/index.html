@@ -1235,7 +1235,6 @@ function renderCompareTrend(entries) {
   };
   const formatDate = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", ...dateOptions[period] });
   const b = base();
-  const labels = Object.fromEntries(traces.map((trace) => [trace.name, trace.platform]));
   const endLabels = [];
   legend.parentElement.style.setProperty("--trend-label-height", traces.length * 48 + "px");
   const series = traces.map((trace, index) => {
@@ -1285,10 +1284,7 @@ function renderCompareTrend(entries) {
   });
   draw("c-compare-trend", { ...b, legend: { show: false },
     grid: { ...b.grid, top: 14, bottom: 14 },
-    tooltip: { ...b.tooltip, formatter: (items) => items.length
-      ? esc(formatDate.format(items[0].value[0])) + "<br>" +
-        items.map((item) => platformTooltipRow({ seriesName: labels[item.seriesName], value: item.value[1] }, fmt)).join("")
-      : "" },
+    tooltip: { show: false, triggerOn: "none" },
     xAxis: { ...b.xAxis, type: "time", axisLabel: { ...b.xAxis.axisLabel, hideOverlap: true, showMaxLabel: true, formatter: (value) => formatDate.format(value) } },
     yAxis: { ...b.yAxis, type: "value", minInterval: 1 },
     series,
