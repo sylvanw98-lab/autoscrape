@@ -1,0 +1,2148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>作品数据分析</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<script>document.write('<script src="data.js?v=' + Date.now() + '"><\/script>');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* 设计规范见 docs/design.md：白底、浅灰卡片套白色面板、墨绿胶囊导航 */
+:root {
+  color-scheme: light;
+  --bg: #ffffff; --card: #f4f5f3; --inner: #ffffff; --line: #e8eae6;
+  --fg: #131713; --muted: #4f564f; --dim: #8a908a;
+  --ink: #16211a; --green: #2f7d4f; --mint: #8fdc9e; --mint-bg: #d9f5de; --warn: #d2593f;
+  --radius: 22px; --radius-in: 16px;
+  --sans: "Plus Jakarta Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  /* 图表脚本读取的别名 */
+  --font: var(--sans); --surface-1: var(--inner); --border: var(--line); --grid: var(--line);
+  --text-primary: var(--fg); --text-secondary: var(--muted); --text-muted: var(--dim);
+  --s1: var(--green); --s2: var(--mint); --critical: var(--warn);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { font: 14px/1.6 var(--sans); color: var(--fg); background: var(--bg); -webkit-font-smoothing: antialiased; }
+a { color: var(--fg); text-decoration: none; }
+::selection { background: var(--mint-bg); color: var(--ink); }
+
+/* 骨架：左侧导航 + 主区 */
+.shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100vh; }
+.side { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 4px; padding: 30px 18px 22px; }
+.brand { padding: 0 12px 22px; }
+.brand-name { font: 700 24px/1 var(--sans); letter-spacing: -0.02em; color: var(--ink); }
+.brand-sub { font-size: 12px; color: var(--dim); margin-top: 6px; }
+.side .group { font-size: 11px; font-weight: 600; letter-spacing: .08em; color: var(--dim); padding: 14px 16px 4px; }
+.side a.nav { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 99px; color: var(--muted); font-weight: 500; transition: background .15s, color .15s; }
+.side a.nav:hover { background: var(--card); color: var(--fg); }
+.side a.nav.on { background: var(--ink); color: #fff; }
+.side a.nav svg { width: 16px; height: 16px; flex: none; }
+.side a:focus-visible, select:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.side .spacer { flex: 1; }
+.side a.jump { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: var(--radius-in); background: linear-gradient(160deg, #eef1fb, #e3f6e7); color: var(--ink); font-weight: 600; }
+.side a.jump:hover { color: var(--green); }
+.side a.jump[hidden] { display: none; }
+
+main { padding: 30px 40px 80px; max-width: 1240px; width: 100%; min-width: 0; }
+html:has(:is(#v-compare, #v-pending):not([hidden])) { scrollbar-gutter: stable; }
+main:has(> :is(#v-compare, #v-pending):not([hidden])) { max-width: none; padding-inline: clamp(16px, 2vw, 32px); }
+.compare-view-tabs { margin: 8px 0 12px; }
+#v-compare :is(#compare-table-options, #compare-trend-panel, #compare-trend-work)[hidden] { display: none; }
+.compare-trend-head, .compare-trend-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.compare-trend-head { justify-content: space-between; margin-bottom: 10px; }
+.compare-trend-head h3 { margin: 0; }
+.trend-picker { position: relative; }
+.trend-picker summary, .trend-picker button { cursor: pointer; border: 1px solid var(--line); background: var(--inner); color: var(--fg); border-radius: 8px; padding: 4px; }
+.trend-picker summary { display: flex; align-items: center; gap: 8px; list-style: none; }
+.trend-picker summary::-webkit-details-marker { display: none; }
+.trend-picker summary::after { content: "⌄"; font-size: 16px; padding-right: 4px; }
+.trend-picker img, .trend-picker .cover-missing { display: block; width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
+.trend-picker .cover-missing { background: var(--line); }
+.trend-picker-options { display: grid; grid-template-columns: repeat(4, max-content); gap: 6px; position: absolute; top: calc(100% + 5px); z-index: 5; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); max-height: min(360px, 55vh); overflow: auto; }
+.trend-picker-option { position: relative; }
+.trend-picker-option .trend-picker-platform { position: absolute; right: 5px; bottom: 5px; width: 15px; height: 15px; padding: 1px; border-radius: 3px; background: white; object-fit: contain; }
+.trend-picker button[aria-pressed="true"] { outline: 2px solid var(--green); outline-offset: -2px; }
+.compare-trend-body { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) clamp(144px, 15vw, 210px); align-items: start; gap: 16px; margin-top: 18px; }
+.compare-trend-body:has(.compare-trend-legend:empty) { grid-template-columns: minmax(0, 1fr); }
+.compare-trend-chart { height: 380px; min-width: 0; }
+.compare-trend-legend { display: flex; flex-direction: column; gap: 8px; padding-left: 12px; border-left: 1px solid var(--line); }
+.compare-trend-legend:empty { display: none; }
+.compare-trend-series::before { content: ""; width: 12px; height: 2px; border-radius: 2px; background: var(--series-color); }
+@media (max-width: 760px) {
+  .compare-trend-body { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .compare-trend-legend { flex-direction: row; flex-wrap: wrap; padding: 0; border-left: 0; }
+}
+@media (min-width: 761px) {
+  .compare-trend-chart, .compare-trend-legend { height: max(380px, var(--trend-label-height, 0px)); }
+  .compare-trend-legend { position: relative; border-left: 0; }
+  .compare-trend-legend .compare-trend-series { position: absolute; left: 12px; }
+}
+.compare-trend-connectors { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+@media (max-width: 760px) { .compare-trend-connectors { display: none; } }
+.compare-trend-legend .compare-trend-series { border: 1px solid var(--line); background: var(--inner); }
+.compare-trend-series { display: inline-flex; align-items: center; gap: 5px; padding: 5px; border: 0; border-radius: 4px; background: transparent; color: var(--fg); font: inherit; font-size: 12px; cursor: pointer; }
+.compare-trend-series[aria-pressed="false"] { opacity: .45; }
+.compare-trend-cover { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; }
+.compare-trend-series-info { display: grid; gap: 2px; text-align: left; white-space: nowrap; }
+.compare-trend-series-value { font-size: 14px; font-variant-numeric: tabular-nums; }
+.compare-trend-series-time { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.compare-trend-series .trend-platform-icon { width: 16px; height: 16px; object-fit: contain; }
+
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.page-head > div { min-width: 0; }
+main:has(> #v-diagnose:not([hidden])) .page-head #title { display: none; }
+.eyebrow { font-size: 12px; font-weight: 500; color: var(--dim); }
+h1 { font: 600 30px/1.15 var(--sans); margin: 2px 0 0; letter-spacing: -0.02em; text-wrap: balance; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 24px; }
+.tag { padding: 2px 10px; border-radius: 99px; background: var(--mint-bg); color: var(--green); font-size: 12px; font-weight: 500; }
+select { font: 500 14px var(--sans); color: var(--fg); background: var(--inner) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%23131713' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 14px center; appearance: none; border: 1px solid var(--line); padding: 9px 38px 9px 16px; border-radius: 99px; max-width: 100%; }
+.page-tabs { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.media-select { flex: none; }
+.tab-group { display: inline-flex; flex-wrap: wrap; gap: 2px; max-width: 100%; padding: 3px; border: 1px solid var(--line); border-radius: 99px; background: var(--inner); }
+.tab-group button { font: 500 13px/1.4 var(--sans); color: var(--muted); border: 0; border-radius: 99px; padding: 6px 12px; background: transparent; cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
+.tab-group button:hover:not([aria-pressed="true"]) { background: var(--card); color: var(--ink); }
+.tab-group button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.tab-group button:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.diagnose-pickers:not([hidden]) { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 100%; }
+.diagnose-pickers { align-items: end; margin: 12px 0 18px; padding: 14px 16px; border-radius: var(--radius-in); background: var(--card); }
+.diagnose-pickers:not([hidden]) { gap: 10px 18px; }
+.diagnose-pickers label, .diagnose-image { display: grid; gap: 4px; min-width: 0; color: var(--muted); font-size: 13px; }
+.diagnose-image .work-picker { color: var(--fg); }
+.diagnose-image summary { background: var(--inner); }
+.calendar-field { position: relative; color: var(--muted); font-size: 13px; }
+.calendar-field > span { display: block; margin-bottom: 4px; }
+.calendar-picker summary { display: flex; align-items: center; gap: 8px; min-width: 166px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 99px; background: var(--inner); color: var(--fg); cursor: pointer; }
+.publication-fields .calendar-picker summary { min-width: 0; }
+.publication-fields .calendar-popup { left: auto; right: 0; }
+.calendar-picker summary::-webkit-details-marker { display: none; }
+.calendar-picker summary svg { width: 15px; height: 15px; flex: none; }
+.calendar-popup { position: absolute; z-index: 6; top: 100%; left: 0; width: min(306px, calc(100vw - 64px)); margin-top: 6px; padding: 11px; border: 1px solid var(--line); border-radius: 14px; background: var(--inner); box-shadow: 0 8px 24px #0002; }
+.calendar-shortcuts, .calendar-header { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.calendar-header { margin: 8px 0 4px; color: var(--fg); }
+.calendar-popup button { border: 0; border-radius: 7px; padding: 5px 7px; background: transparent; font: inherit; color: var(--fg); cursor: pointer; }
+.calendar-popup button:hover { background: var(--mint-bg); }
+.calendar-shortcuts button { color: var(--green); white-space: nowrap; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; }
+.calendar-grid > span { padding: 4px 0; font-size: 11px; color: var(--dim); }
+.calendar-grid button { font-variant-numeric: tabular-nums; padding-inline: 0; }
+.calendar-grid button.calendar-range { background: var(--mint-bg); }
+.calendar-grid button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.calendar-grid button[aria-current="date"]:not([aria-pressed="true"]) { box-shadow: inset 0 0 0 1px var(--green); }
+@media (max-width: 620px) { .calendar-field { flex-basis: 100%; } }
+.work-picker { position: relative; min-width: 0; }
+.work-picker summary { display: flex; align-items: center; gap: 8px; max-width: min(280px, 78vw); padding: 4px 12px 4px 5px; border: 1px solid var(--line); border-radius: 99px; cursor: pointer; }
+.work-picker summary::-webkit-details-marker { display: none; }
+.work-picker summary::after { content: ""; width: 6px; height: 6px; flex: none; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.work-picker-summary { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.work-picker-options { position: absolute; right: 0; z-index: 5; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: min(260px, 85vw); max-height: 320px; overflow: auto; margin-top: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--inner); box-shadow: 0 8px 24px #0002; }
+.work-picker-options button { display: grid; min-width: 0; padding: 4px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.work-picker-options .work-picker-thumb > span { display: none; }
+.work-picker-options button:hover, .work-picker-options button[aria-pressed="true"] { border-color: var(--green); background: var(--mint-bg); }
+.work-picker-thumb { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 5; border-radius: 6px; overflow: hidden; background: var(--card); color: var(--muted); font-size: 11px; }
+.work-picker-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.work-picker-summary .work-picker-thumb { flex: none; width: 29px; }
+.work-picker-summary .work-picker-thumb span { font-size: 9px; }
+.work-picker-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+@media (max-width: 600px) { .work-picker { flex-basis: 100%; } .work-picker-options { left: 0; right: auto; } }
+select:focus { border-color: var(--green); box-shadow: 0 0 0 3px var(--mint-bg); outline: none; }
+h2.sec { font: 600 17px var(--sans); margin: 34px 0 14px; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+h2.sec .count { font: 600 12px var(--sans); color: var(--ink); background: var(--mint-bg); padding: 1px 9px; border-radius: 99px; }
+
+/* 指标卡：左上标签，左下大数字 */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.stat { display: flex; flex-direction: column; justify-content: space-between; min-height: 128px; padding: 20px 22px; border-radius: var(--radius); background: var(--card); }
+.stat .label { font-size: 13px; font-weight: 500; color: var(--muted); }
+.stat .value { font: 500 32px/1.1 var(--sans); letter-spacing: -0.02em; margin-top: 14px; font-variant-numeric: tabular-nums; }
+.stat .value small { font-size: 13px; font-weight: 500; color: var(--dim); margin-left: 4px; letter-spacing: 0; }
+.stat.accent { background: linear-gradient(160deg, #eef1fb, #e3f6e7); }
+.stat.accent .value { color: var(--ink); }
+
+/* 图表卡：浅灰卡片里套白色面板 */
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
+.span-12 { grid-column: span 12; } .span-8 { grid-column: span 8; } .span-6 { grid-column: span 6; } .span-4 { grid-column: span 4; } .span-3 { grid-column: span 3; }
+.card { background: var(--card); border-radius: var(--radius); padding: 8px; min-width: 0; display: flex; flex-direction: column; }
+.card.accent { background: linear-gradient(160deg, #eef1fb, #e3f6e7); }
+.card-head { padding: 12px 14px 12px; }
+.card-head h3 { font: 600 15px var(--sans); margin: 0; letter-spacing: -0.01em; }
+.card-head p { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
+.panel { background: var(--inner); border-radius: var(--radius-in); padding: 14px 16px; flex: 1; min-width: 0; }
+.card.accent .panel { background: rgba(255,255,255,.7); }
+.chart { width: 100%; height: 300px; }
+.chart.tall { height: 340px; }
+.insight { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.insight li { font-size: 13px; color: var(--muted); }
+.insight b { color: var(--fg); font-weight: 600; }
+.panel + .panel { margin-top: 8px; flex: none; }
+
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+th { text-align: right; padding: 12px 14px; font-size: 12px; font-weight: 500; color: var(--dim); border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { text-align: right; padding: 13px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; white-space: normal; min-width: 200px; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: #fafbf9; }
+tr.sel td { background: var(--mint-bg) !important; }
+tbody tr[data-video=true] { cursor: pointer; }
+.table-panel { padding: 0; overflow-x: auto; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 500; background: var(--line); color: var(--muted); }
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chip.video { background: var(--mint-bg); color: var(--green); }
+.empty { color: var(--dim); padding: 40px 0; text-align: center; font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+section[id], h2[id] { scroll-margin-top: 20px; }
+
+.image-view [data-video], #media-empty[hidden] { display: none; }
+@media (max-width: 1100px) { .span-8, .span-4 { grid-column: span 12; } }
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .side { position: static; height: auto; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; padding: 18px 16px 6px; }
+  .brand, .side .group, .side .spacer { display: none; }
+  .side a.nav, .side a.jump { white-space: nowrap; }
+  main { padding: 18px 16px 60px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat .value { font-size: 26px; }
+  .span-6, .span-3 { grid-column: span 12; }
+}
+
+/* 多平台 */
+:root { --p-xhs: #eb6834; --p-douyin: #2a78d6; --p-channels: #f59e0b; --p-tiktok: #168879; --p-instagram: #ac447f; --p-youtube: #e5484d; --p-x: #696f7a; }
+.view[hidden], #ov-platforms [hidden] { display: none !important; }
+.pf { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.pf::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.rel { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.rel.up { background: var(--mint-bg); color: var(--green); }
+.rel.down { background: #fbe4de; color: #a83a22; }
+.rel.flat { background: var(--line); color: var(--muted); }
+#t-compare .rel.missing { color: var(--dim); background: var(--line); }
+.compare-pagination:not([hidden]) { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px 2px; color: var(--muted); font-size: 13px; }
+.compare-pagination > div { display: flex; align-items: center; gap: 8px; }
+.compare-pagination button { font: inherit; color: var(--fg); padding: 5px 10px; border: 1px solid var(--line); border-radius: 99px; background: var(--inner); cursor: pointer; }
+.compare-pagination button:disabled { opacity: .45; cursor: default; }
+#t-compare :is(th, td) { text-align: left; }
+#t-compare[data-platform]:not([data-platform=""]) { table-layout: fixed; min-width: 700px; }
+#t-compare .compare-date-column { width: 135px; }
+#t-compare .compare-metrics-column { width: 297px; }
+#t-compare[data-platform]:not([data-platform=""]) :is(.compare-column-label, .compare-date-value, td > .cell, td > .cell-metrics) { translate: -20px 0; }
+#t-compare :is(.compare-column-label, .compare-date-value) { display: inline-block; }
+#t-compare[data-platform=""] :is(th, td):last-child:not(:only-child) { text-align: right; }
+.platform-change { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.platform-change .rel { color: #a83a22; font-size: 10px; font-variant-numeric: tabular-nums; }
+.platform-metric { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+.follower-controls { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.follower-metrics { display: flex; gap: 4px; padding: 3px; border-radius: 99px; background: var(--inner); }
+.follower-metrics button { font: inherit; color: var(--muted); border: 0; border-radius: 99px; padding: 7px 13px; background: transparent; cursor: pointer; }
+.follower-metrics button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.compare-options { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 12px; }
+.compare-options > div { color: var(--muted); font-size: 13px; }
+.compare-toolbar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 18px; margin-top: 12px; }
+.compare-toolbar > :is(.calendar-field, .compare-options) { margin-top: 0; }
+.compare-toolbar > .compare-options { flex: 1 1 460px; min-width: 0; }
+.compare-options .compare-platforms { margin-top: 4px; }
+.image-preview button { font: inherit; color: var(--fg); padding: 6px 10px; background: var(--inner); border: 1px solid var(--line); border-radius: 8px; }
+.image-preview button { cursor: pointer; }
+#v-pending { margin-top: 18px; }
+.pending-tabs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pending-tabs button { font: inherit; border: 1px solid var(--line); border-radius: 99px; background: var(--inner); color: var(--fg); padding: 6px 12px; cursor: pointer; }
+.pending-tabs button[aria-pressed="true"] { color: #fff; background: var(--ink); border-color: var(--ink); }
+#pending-status:empty { display: none; }
+#pending-status { color: var(--muted); margin: 0; font-size: 12px; }
+.pending-platform-tabs { margin-bottom: 12px; font-size: 12px; }
+.publication-toolbar { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 12px; }
+.publication-toolbar .pending-platform-tabs { margin-bottom: 0; }
+.publication-primary, .publication-actions button { border: 1px solid var(--line); border-radius: 99px; padding: 8px 14px; font: inherit; cursor: pointer; }
+.publication-primary, .publication-actions .publication-primary { border-color: var(--ink); background: var(--ink); color: white; }
+.publication-dialog { width: min(600px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: clamp(16px, 3vw, 28px); border: 1px solid var(--line); border-radius: var(--radius); background: var(--inner); color: var(--fg); }
+@media (min-width: 740px) {
+  .publication-dialog:has(.calendar-picker[open]) { width: min(850px, calc(100vw - 32px)); }
+  .publication-form:has(.calendar-picker[open]) { position: relative; padding-right: 326px; }
+  .publication-form:has(.calendar-picker[open]) .calendar-field { position: static; }
+  .publication-fields .calendar-popup { top: 0; right: 0; width: 306px; margin: 0; box-shadow: none; }
+}
+@media (max-width: 739px) {
+  .publication-fields .calendar-popup { position: static; width: 100%; min-width: 0; box-shadow: none; }
+}
+.publication-dialog::backdrop { background: #0006; }
+.publication-form { display: grid; gap: 12px; }
+.publication-form h2 { margin: 0; font-size: 19px; }
+.publication-form label { display: grid; gap: 4px; min-width: 0; color: var(--muted); font-size: 13px; }
+.publication-form :is(input, textarea) { width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--inner); color: var(--fg); font: inherit; }
+.publication-form textarea { resize: vertical; }
+.publication-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.publication-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.publication-actions button:not(.publication-primary) { color: var(--fg); background: var(--inner); }
+#publication-form-error:not([hidden]) { margin: 0; color: #a83a22; font-size: 13px; }
+/* 封面：本地上传图片 / 视频 */
+.publication-cover { display: grid; gap: 4px; color: var(--muted); font-size: 13px; }
+.cover-upload { display: grid; place-items: center; gap: 3px; min-height: 96px; padding: 14px; border: 1px dashed var(--line); border-radius: 10px; background: var(--inner); color: var(--muted); font-size: 13px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+.cover-upload:hover, .cover-upload:focus-within { border-color: var(--ink); background: var(--card); }
+.cover-upload.has-files { min-height: 0; padding: 8px 12px; }
+.cover-upload strong { color: var(--fg); font-size: 13px; font-weight: 600; }
+.cover-upload small { font-size: 11px; }
+.cover-upload-more { color: var(--muted); font-size: 12px; }
+.cover-upload-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+.cover-thumb { position: relative; width: 88px; height: 88px; border-radius: 8px; overflow: hidden; background: var(--card); }
+.cover-thumb img, .cover-thumb video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cover-thumb-remove { position: absolute; top: 3px; right: 3px; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 99px; background: #000a; color: #fff; font: inherit; font-size: 14px; line-height: 1; cursor: pointer; }
+.cover-thumb-remove:hover { background: #000d; }
+.cover-upload-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.cover-upload-meta span { overflow-wrap: anywhere; }
+.cover-upload-meta button { padding: 3px 10px; border: 1px solid var(--line); border-radius: 99px; background: var(--inner); color: var(--fg); font: inherit; font-size: 12px; cursor: pointer; }
+.cover-upload-error:not([hidden]) { margin: 0; color: #a83a22; font-size: 12px; }
+.cover-upload-badge { position: absolute; right: 5px; bottom: 5px; padding: 1px 6px; border-radius: 99px; background: #000a; color: #fff; font-size: 10px; line-height: 1.6; pointer-events: none; }
+.pending-cover { display: block; }
+.pending-covers { display: flex; flex-wrap: wrap; gap: 6px; }
+.pending-covers .work-thumbnail img, .pending-covers .work-thumbnail video { width: 84px; height: 64px; }
+@media (max-width: 390px) { .publication-fields { grid-template-columns: 1fr; } }
+.pending-platform-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.publication-delete { border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; background: var(--inner); color: #a83a22; font: inherit; cursor: pointer; }
+.pending-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pending-list > .empty { grid-column: 1 / -1; }
+@media (max-width: 960px) { .pending-list { grid-template-columns: minmax(0, 1fr); } }
+.pending-entry { display: grid; grid-template-columns: 68px minmax(0, 1fr); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.pending-date { display: grid; align-content: center; justify-items: center; gap: 2px; padding: 9px 4px; background: var(--card); color: var(--muted); font-size: 11px; text-align: center; }
+.pending-date strong { color: var(--ink); font-size: 18px; font-variant-numeric: tabular-nums; }
+.pending-entry-body { display: grid; gap: 6px; padding: 11px 12px; min-width: 0; }
+.pending-entry-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; font-size: 13px; }
+.pending-platform { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; white-space: nowrap; }
+.pending-platform img { width: 16px; height: 16px; object-fit: contain; }
+.pending-entry-head strong, .pending-copy { overflow-wrap: anywhere; }
+.pending-copy { margin: 0; white-space: pre-wrap; color: var(--muted); font-size: 13px; }
+.pending-entry-title { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.publication-example { margin-inline-start: 4px; border-radius: 99px; padding: 2px 6px; font-size: 11px; color: var(--muted); background: var(--card); }
+.work-description { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.work-gallery { display: flex; flex-wrap: wrap; gap: 8px; }
+#d-copy .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#d-copy .card-head .pf { display: inline-flex; width: fit-content; padding: 5px 11px; border: 1px solid color-mix(in srgb, var(--c) 25%, transparent); border-radius: 99px; background: color-mix(in srgb, var(--c) 12%, white); color: var(--ink); }
+#d-copy .post-link { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 99px; background: var(--inner); color: var(--green); font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+#d-copy .post-link:hover { background: var(--mint-bg); }
+#d-copy .card + .card { margin-top: 10px; }
+.work-copy-field + .work-copy-field { margin-top: 10px; }
+.work-copy-label { display: block; margin-bottom: 3px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.work-thumbnail { position: relative; display: block; padding: 0; margin: 0 0 8px; border: 0; border-radius: 8px; background: transparent; cursor: zoom-in; }
+.work-thumbnail img { display: block; width: 108px; height: 82px; object-fit: contain; border-radius: 8px; background: var(--inner); }
+#t-compare .work-thumbnail img { width: 62px; height: 82px; max-width: none; object-fit: cover; object-position: center; }
+#t-compare .work-gallery .work-thumbnail { flex: 0 0 auto; }
+#t-compare .work-gallery { align-items: flex-start; }
+.work-thumbnail video { display: block; width: 108px; height: 82px; object-fit: cover; border-radius: 8px; background: var(--inner); }
+.image-preview { max-width: 94vw; max-height: 94vh; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--fg); }
+.image-preview::backdrop { background: rgba(0, 0, 0, .7); }
+.image-preview button { display: block; margin: 0 0 8px auto; }
+.image-preview img[hidden] { display: none; }
+.image-preview img { display: block; max-width: min(86vw, 1100px); max-height: 80vh; object-fit: contain; }
+.image-preview video[hidden] { display: none; }
+.image-preview video { display: block; max-width: min(86vw, 1100px); max-height: 80vh; background: #000; border-radius: 8px; }
+.compare-platforms { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.compare-platforms button { font: inherit; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 6px 13px; background: var(--inner); cursor: pointer; }
+.compare-platforms button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #fff; }
+.platform-group { margin: 16px 0 8px; font-size: 15px; }
+.pcards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.pcards.pcards-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pcard .rows { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+.kv .k { font-size: 12px; color: var(--dim); font-weight: 500; }
+.kv .v { font: 500 22px/1.2 var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.kv .v.metric-unavailable { font-size: 13px; letter-spacing: normal; }
+.cell { display: grid; gap: 3px; justify-items: start; }
+.cell-metrics { display: grid; grid-template-columns: max-content max-content; align-items: baseline; gap: 3px 10px; text-align: left; font-size: 13px; font-weight: 400; }
+.cell-metrics > span { white-space: nowrap; }
+.cell .cell-metrics [data-metric="views"] { grid-area: 1 / 1; }
+.cell .cell-metrics [data-metric="likes"] { grid-area: 1 / 2; }
+.cell .cell-metrics [data-metric="comments"] { grid-area: 2 / 1; }
+.cell .cell-metrics [data-metric="collects"] { grid-area: 2 / 2; }
+td.na { color: var(--dim); }
+.funnel { display: grid; gap: 8px; }
+.stage { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; }
+.stage.bottle { background: #fbefd9; }
+.stage .name { font-weight: 600; font-size: 13px; }
+.stage .name small { display: block; font-weight: 500; color: var(--dim); font-size: 11px; }
+.stage .val { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.stage .val b { font-size: 16px; font-weight: 600; }
+.stage .tip { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.diag-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.verdict { font-size: 13px; color: var(--fg); background: var(--inner); border-radius: 12px; padding: 10px 14px; margin-top: 10px; }
+.note { font-size: 12px; color: var(--dim); margin-top: 8px; }
+.image-view [data-video], #media-empty[hidden] { display: none; }
+@media (max-width: 1320px) { .pcards.pcards-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px) { .pcards { grid-template-columns: 1fr; }  }
+@media (max-width: 720px) { .pcards.pcards-4 { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side" aria-label="作品数据分析导航">
+  <div class="brand"><div class="brand-name">作品数据分析</div><div class="brand-sub"><div>小红书 · 抖音 · 视频号</div><div>TikTok · Instagram · YouTube · X</div></div></div>
+  <a class="nav" href="#overview" data-view="overview"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1.5"/><rect x="9" y="2" width="5" height="5" rx="1.5"/><rect x="2" y="9" width="5" height="5" rx="1.5"/><rect x="9" y="9" width="5" height="5" rx="1.5"/></svg>总览</a>
+  <a class="nav" href="#compare" data-view="compare"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="2" width="11" height="12" rx="2"/><path d="M2.5 6.5h11M7 6.5V14"/></svg>作品对比</a>
+  <a class="nav" href="#diagnose" data-view="diagnose"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12l-4.5 5.5V13L6.5 14V8.5z"/></svg>单条诊断</a>
+  <a class="nav" href="#pending" data-view="pending"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 4.5V8l2.5 1.5"/></svg>发布清单</a>
+  <div class="spacer"></div>
+  <a class="jump" id="jump" href="/" target="_top" hidden>返回启动台 <span aria-hidden="true">→</span></a>
+  <script>if (window.top !== window.self) document.getElementById("jump").hidden = false; // 嵌在网站里时才显示</script>
+</aside>
+<main>
+  <div class="page-head">
+    <div><div class="eyebrow" id="meta"></div><h1 id="title">作品数据分析</h1></div>
+    <div class="page-tabs">
+      <div class="tab-group" id="account-select" role="group" aria-label="账号类型">
+        <button type="button" data-value="official" aria-pressed="true">官方号</button>
+        <button type="button" data-value="alt" aria-pressed="false">马甲号</button>
+      </div>
+      <div class="tab-group media-select" id="media-select" role="group" aria-label="内容类型">
+        <button type="button" data-value="video" aria-pressed="true">视频</button>
+        <button type="button" data-value="image" aria-pressed="false">图文</button>
+      </div>
+    </div>
+  </div>
+  <div class="diagnose-pickers" id="diagnose-pickers" role="group" aria-label="筛选诊断内容" hidden>
+    <label>平台<select id="pick-platform"></select></label>
+    <div class="calendar-field" id="diagnose-calendar-field">
+      <span>发布时间</span>
+      <input type="date" id="diagnose-from" hidden>
+      <input type="date" id="diagnose-to" hidden>
+    </div>
+    <div class="diagnose-image">
+      <span id="diagnose-image-label">图片</span>
+      <details class="work-picker" id="pick">
+        <summary aria-labelledby="diagnose-image-label pick-current"><span class="work-picker-summary" id="pick-current"></span></summary>
+        <div class="work-picker-options" id="pick-options" role="group" aria-label="内容列表"></div>
+      </details>
+    </div>
+  </div>
+  <p class="empty" id="media-empty" hidden></p>
+
+  <section class="view" id="v-overview">
+    <div class="stats" id="ov-stats"></div>
+    <h2 class="sec">各平台表现 <span class="count" id="ov-scope">全部已采集作品</span></h2>
+    <div id="ov-platforms">
+      <h3 class="platform-group" id="ov-international-title">国外</h3>
+      <div class="pcards pcards-4" id="ov-international" aria-labelledby="ov-international-title"></div>
+      <h3 class="platform-group" id="ov-domestic-title">国内</h3>
+      <div class="pcards pcards-4" id="ov-domestic" aria-labelledby="ov-domestic-title"></div>
+    </div>
+    <h2 class="sec">粉丝数趋势</h2>
+    <section class="card">
+      <div class="card-head follower-controls">
+        <div class="follower-metrics" role="group" aria-label="粉丝趋势指标">
+          <button type="button" data-follower-metric="count" aria-pressed="true">粉丝数</button>
+          <button type="button" data-follower-metric="growth" aria-pressed="false">粉丝涨幅</button>
+        </div>
+        <div class="tab-group" id="follower-period" role="group" aria-label="粉丝趋势时间粒度">
+          <button type="button" data-value="hour" aria-pressed="true">按小时</button>
+          <button type="button" data-value="day" aria-pressed="false">按日</button>
+          <button type="button" data-value="month" aria-pressed="false">按月</button>
+          <button type="button" data-value="year" aria-pressed="false">按年</button>
+        </div>
+      </div>
+      <div class="panel"><div class="chart" id="c-followers"></div></div>
+    </section>
+    <h2 class="sec">跨平台作品表现 <span class="count" id="ov-count"></span></h2>
+    <section class="card">
+      <div class="card-head follower-controls">
+        <div><h3 id="ov-works-title">各平台浏览 / 播放构成</h3><p>最多显示 12 个在至少两个平台发布且有该指标数据的作品</p></div>
+        <div class="tab-group" id="ov-works-metric" role="group" aria-label="跨平台作品指标">
+          <button type="button" data-value="views" aria-pressed="true">浏览 / 播放量</button>
+          <button type="button" data-value="collects" aria-pressed="false">收藏</button>
+          <button type="button" data-value="likes" aria-pressed="false">点赞量</button>
+          <button type="button" data-value="comments" aria-pressed="false">评论</button>
+        </div>
+      </div>
+      <div class="panel"><div class="chart" id="c-ov-works"></div></div>
+    </section>
+  </section>
+
+  <section class="view" id="v-compare" hidden>
+    <div class="tab-group compare-view-tabs" id="compare-view-tabs" role="group" aria-label="作品对比展示方式">
+      <button type="button" data-value="data" aria-pressed="true">数据展示</button>
+      <button type="button" data-value="chart" aria-pressed="false">图形展示</button>
+    </div>
+    <section class="card">
+      <div class="card-head"><h3>作品 × 平台</h3><p>每格显示浏览或播放、点赞、评论和收藏数。点击图片可放大，点击表格行可查看详情</p>
+        <div class="compare-options compare-scope">
+          <div><span id="compare-region-label">地区</span><div class="compare-platforms" id="compare-region" role="group" aria-labelledby="compare-region-label"></div></div>
+          <div><span id="compare-platform-label">平台</span><div class="compare-platforms" id="compare-platforms" role="group" aria-labelledby="compare-platform-label"></div></div>
+        </div>
+        <div class="compare-toolbar">
+          <div class="calendar-field" id="compare-calendar-field">
+            <span>首发日期</span>
+            <input type="date" id="compare-from" hidden>
+            <input type="date" id="compare-to" hidden>
+          </div>
+          <div class="compare-options" id="compare-table-options">
+            <div><span id="compare-metric-label">显示指标</span><div class="compare-platforms" id="compare-metric" role="group" aria-labelledby="compare-metric-label"></div></div>
+            <div><span id="compare-sort-label">排序</span><div class="compare-platforms" id="compare-sort" role="group" aria-labelledby="compare-sort-label"></div></div>
+            <div><span id="compare-basis-label">对比基准</span><div class="compare-platforms" id="compare-basis" role="group" aria-labelledby="compare-basis-label"></div></div>
+          </div>
+        </div>
+      </div>
+      <div id="compare-data-panel">
+        <div class="panel table-panel"><table id="t-compare"></table></div>
+        <nav class="compare-pagination" id="compare-pagination" aria-label="作品分页" hidden>
+          <span id="compare-page-count" aria-live="polite"></span>
+          <div>
+            <button type="button" id="compare-page-prev">上一页</button>
+            <span id="compare-page-number"></span>
+            <button type="button" id="compare-page-next">下一页</button>
+          </div>
+        </nav>
+      </div>
+      <section class="panel compare-trend-panel" id="compare-trend-panel" aria-labelledby="compare-trend-title" hidden>
+        <div class="compare-trend-head">
+          <h3 id="compare-trend-title">互动趋势</h3>
+          <div class="tab-group" id="compare-trend-period" role="group" aria-label="采集时间粒度">
+            <button type="button" data-value="hour" aria-pressed="true">按小时</button>
+            <button type="button" data-value="day" aria-pressed="false">按日</button>
+            <button type="button" data-value="month" aria-pressed="false">按月</button>
+            <button type="button" data-value="year" aria-pressed="false">按年</button>
+          </div>
+        </div>
+        <div class="compare-trend-controls">
+          <div class="tab-group" id="compare-trend-mode" role="group" aria-label="作品范围">
+            <button type="button" data-value="recent" aria-pressed="true">最近 3 个作品</button>
+            <button type="button" data-value="single" aria-pressed="false">单个作品</button>
+          </div>
+          <details class="trend-picker" id="compare-trend-work" hidden>
+            <summary aria-label="选择作品"></summary>
+            <div class="trend-picker-options" role="group" aria-label="作品封面"></div>
+          </details>
+          <div class="tab-group" id="compare-trend-metric" role="group" aria-label="互动指标">
+            <button type="button" data-value="views" aria-pressed="true">浏览／播放</button>
+            <button type="button" data-value="likes" aria-pressed="false">点赞</button>
+            <button type="button" data-value="comments" aria-pressed="false">评论</button>
+            <button type="button" data-value="collects" aria-pressed="false">收藏</button>
+          </div>
+        </div>
+        <div class="compare-trend-body">
+          <div class="chart compare-trend-chart" id="c-compare-trend" aria-label="互动趋势折线图"></div>
+          <svg class="compare-trend-connectors" id="compare-trend-connectors" aria-hidden="true"></svg>
+          <div class="compare-trend-legend" id="compare-trend-legend" role="group" aria-label="切换趋势曲线"></div>
+        </div>
+      </section>
+    </section>
+  </section>
+
+  <section class="view" id="v-pending" hidden>
+    <div class="card">
+      <div class="panel">
+        <div class="publication-toolbar">
+          <div class="pending-tabs pending-platform-tabs" id="pending-platform-tabs" role="group" aria-label="筛选发布平台"></div>
+          <button class="publication-primary" type="button" id="publication-add">添加发布记录</button>
+        </div>
+        <p id="pending-status" role="status"></p>
+        <div class="pending-list" id="pending-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-diagnose" hidden>
+    <div class="tags" id="d-tags"></div>
+    <div id="d-copy"></div>
+    <div class="pcards" data-video id="d-funnels"></div>
+    <h2 class="sec" data-video>观众在哪一秒离开</h2>
+    <div class="grid" data-video>
+      <section class="card span-8">
+        <div class="card-head"><h3>各平台留存曲线</h3><p>每一秒还在看的观众占比。虚线是抖音给的同类作者平均</p></div>
+        <div class="panel"><div class="chart tall" id="c-d-ret"></div></div>
+      </section>
+      <section class="card span-4 accent">
+        <div class="card-head"><h3>流失最快的时刻</h3><p>每个平台掉得最快的几秒</p></div>
+        <div class="panel"><ul class="insight" id="d-drops"></ul></div>
+      </section>
+    </div>
+    <div id="d-sources-block">
+      <h2 class="sec">流量从哪来</h2>
+      <div class="grid" id="d-sources"></div>
+    </div>
+    <div id="d-audience-block">
+      <h2 class="sec">谁在看</h2>
+      <div class="grid" id="d-audience"></div>
+    </div>
+    <div id="d-trend-block">
+      <h2 class="sec">播放什么时候来的</h2>
+      <section class="card">
+        <div class="card-head"><h3>发布后的播放</h3><p>按平台可用的时间粒度展示</p></div>
+        <div class="panel"><div class="chart" id="c-d-trend"></div></div>
+      </section>
+    </div>
+  </section>
+
+</main>
+</div>
+<template id="range-calendar-template">
+      <details class="calendar-picker">
+        <summary>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="2" y="3.5" width="12" height="10" rx="2"/><path d="M5 2v3M11 2v3M2 7h12"/></svg>
+          <span class="calendar-value">全部日期</span>
+        </summary>
+        <div class="calendar-popup" role="group" aria-label="选择日期范围">
+          <div class="calendar-shortcuts">
+            <button type="button" data-days="7">最近 7 天</button>
+            <button type="button" data-days="30">最近 30 天</button>
+            <button type="button" data-clear>清除</button>
+          </div>
+          <div class="calendar-header">
+            <button type="button" data-month-step="-1" aria-label="上个月">‹</button>
+            <strong class="calendar-month" aria-live="polite"></strong>
+            <button type="button" data-month-step="1" aria-label="下个月">›</button>
+          </div>
+          <div class="calendar-grid"></div>
+        </div>
+      </details>
+</template>
+<dialog class="publication-dialog" id="publication-dialog" aria-labelledby="publication-form-title">
+  <form class="publication-form" id="publication-form">
+    <h2 id="publication-form-title">添加发布记录</h2>
+    <label>作品标题<input name="title" maxlength="160" required autofocus></label>
+    <div class="publication-fields">
+      <label>平台<select name="platform" required id="publication-platform"></select></label>
+      <div class="calendar-field" id="publication-calendar-field"><span>计划发布日期</span><input name="date" type="hidden" id="publication-date"></div>
+    </div>
+    <label>发布文案<textarea name="copy" rows="4" maxlength="4000"></textarea></label>
+    <div class="publication-cover">
+      <span>封面 / 配图（可多选）</span>
+      <label class="cover-upload" id="publication-cover-upload">
+        <input type="file" id="publication-cover" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime" multiple hidden>
+        <span class="cover-upload-empty" id="publication-cover-empty">
+          <strong>点击上传图片或视频</strong>
+          <small>可一次选多个：图片最多 9 张，视频 1 个</small>
+        </span>
+        <span class="cover-upload-more" id="publication-cover-more" hidden>＋ 继续添加</span>
+      </label>
+      <div class="cover-upload-strip" id="publication-cover-preview" hidden></div>
+      <div class="cover-upload-meta" id="publication-cover-meta" hidden>
+        <span id="publication-cover-name"></span>
+        <button type="button" id="publication-cover-remove">全部移除</button>
+      </div>
+      <p class="cover-upload-error" id="publication-cover-error" role="alert" hidden></p>
+    </div>
+    <p id="publication-form-error" role="alert" hidden></p>
+    <div class="publication-actions">
+      <button type="button" id="publication-cancel">取消</button>
+      <button class="publication-primary" type="submit">保存到清单</button>
+    </div>
+  </form>
+</dialog>
+<dialog class="image-preview" id="image-preview" aria-label="作品图片预览">
+  <form method="dialog"><button>关闭</button></form>
+  <img alt="作品图片">
+  <video id="preview-video" controls playsinline hidden></video>
+  <p id="image-preview-error" hidden>图片加载失败</p>
+</dialog>
+<script>
+const D = window.VIDEO_DATA || { works: [], platforms: {} };
+const PF = { xhs: "小红书", douyin: "抖音", channels: "视频号", tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", x: "X" };
+const allWorks = D.works;
+const mediaSelect = document.getElementById("media-select");
+const accountSelect = document.getElementById("account-select");
+const ACCOUNT_LABELS = { official: "官方号", alt: "马甲号", ...(D.accounts || {}) };
+let mediaType, mediaName, accountType, posts;
+const PKEYS = Object.keys(PF);
+const DOMESTIC_PLATFORMS = new Set(["xhs", "douyin", "channels"]);
+const platformIcon = Object.fromEntries(PKEYS.map((key) =>
+  [PF[key], new URL("platform-icons/" + (key === "xhs" ? "xiaohongshu.svg?style=red" : key + ".svg"), document.baseURI).href]));
+function platformLegend(names, settings) {
+  return { ...settings, itemWidth: 14, itemHeight: 14,
+    data: names.map((name) => ({ name, icon: "image://" + platformIcon[name] })) };
+}
+function platformTooltipRow(item, format) {
+  return `<div style="display:flex;align-items:center;gap:6px"><img alt="" src="${esc(platformIcon[item.seriesName])}" width="14" height="14">
+    <span>${esc(item.seriesName)}</span><strong style="margin-left:auto;padding-left:14px">${format(item.value)}</strong></div>`;
+}
+
+let followerHistory = {};
+const followerCount = (platform) => followerHistory[platform]?.at(-1)?.followers ?? null;
+// 兼容旧数据：旧版 followers 直接按平台存，没有账号类型这一层
+function followersFor(type) {
+  const data = D.followers || {};
+  if (Object.values(data).some(Array.isArray)) return type === "official" ? data : {};
+  return data[type] || {};
+}
+const charts = {};
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = (v, d = 0) => v == null ? "–" : Number(v).toLocaleString("zh-CN", { maximumFractionDigits: d });
+const pct = (v) => v == null ? "–" : fmt(v, 1) + "%";
+const sec = (v) => v == null ? "–" : fmt(v, 1) + "s";
+const dt = (ts) => ts == null ? "–" : new Date(ts).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const short = (t, n = 18) => { t = String(t || "").replace(/#\S+/g, "").trim() || String(t || ""); return t.length > n ? t.slice(0, n) + "…" : t; };
+function activeTab(control) {
+  return control.querySelector('button[data-value][aria-pressed="true"]')?.dataset.value ?? "";
+}
+function setTab(control, value) {
+  control.querySelectorAll("button[data-value]").forEach((button) =>
+    button.setAttribute("aria-pressed", String(button.dataset.value === value)));
+}
+function bindTabs(control, onChange) {
+  control.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-value]");
+    if (!button || button.getAttribute("aria-pressed") === "true") return;
+    setTab(control, button.dataset.value);
+    onChange(button.dataset.value);
+  });
+}
+const pcol = (k) => css("--p-" + k);
+const pfTag = (k) => `<span class="pf" style="--c:var(--p-${k})">${PF[k]}</span>`;
+const median = (a) => { a = a.filter((x) => x != null).sort((x, y) => x - y); return a.length ? (a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2) : null; };
+// 比平时：r 是「本条 / 同平台平均数」；lowerBetter 的指标反过来看
+function relChip(r, lowerBetter, showSmallChanges = false) {
+  if (r == null) return "";
+  const lower = showSmallChanges ? 1 : 0.9;
+  const upper = showSmallChanges ? 1 : 1.1;
+  const good = lowerBetter ? r < lower : r > upper;
+  const bad = lowerBetter ? r > upper : r < lower;
+  const magnitude = Math.abs((r - 1) * 100);
+  const percent = showSmallChanges && magnitude < 0.1
+    ? "&lt;0.1%" : fmt(magnitude, showSmallChanges ? 1 : 0) + "%";
+  const change = (r > 1 ? "+" : "−") + percent;
+  return `<span class="rel ${good ? "up" : bad ? "down" : "flat"}">${good ? "▲" : bad ? "▼" : "●"} ${good || bad ? change : "持平"}</span>`;
+}
+
+function base() {
+  const t2 = css("--text-secondary"), grid = css("--grid");
+  return {
+    animation: false,
+    textStyle: { fontFamily: css("--font"), color: t2 },
+    grid: { left: 8, right: 16, top: 30, bottom: 8, containLabel: true },
+    tooltip: { trigger: "axis", backgroundColor: css("--surface-1"), borderColor: css("--border"), textStyle: { color: css("--text-primary") } },
+    legend: { top: 0, left: 0, icon: "circle", itemWidth: 8, itemHeight: 8, textStyle: { color: t2 } },
+    xAxis: { axisLine: { lineStyle: { color: grid } }, axisTick: { show: false }, axisLabel: { color: css("--text-muted") }, splitLine: { show: false } },
+    yAxis: { axisLine: { show: false }, axisLabel: { color: css("--text-muted") }, splitLine: { lineStyle: { color: grid } } },
+  };
+}
+function draw(id, opt) {
+  const el = document.getElementById(id);
+  if (charts[id] && charts[id].getDom() !== el) charts[id] = null;
+  if (!charts[id]) { el.innerHTML = ""; charts[id] = echarts.init(el, null, { renderer: "svg" }); }
+  charts[id].setOption(opt, true);
+}
+function empty(id, msg) {
+  charts[id]?.dispose(); delete charts[id];
+  document.getElementById(id).innerHTML = `<div class="empty">${msg}</div>`;
+}
+function hbar(id, rows, color) {
+  if (!rows?.length) return empty(id, "这个平台没给这项数据");
+  const b = base(), r = rows.slice(0, 8).reverse();
+  draw(id, { ...b,
+    grid: { ...b.grid, top: 4, right: 48 },
+    tooltip: { ...b.tooltip, trigger: "item", formatter: (p) => `${esc(p.name)}：${fmt(p.value, 1)}%` },
+    xAxis: { ...b.xAxis, type: "value", show: false },
+    yAxis: { ...b.yAxis, type: "category", data: r.map((x) => x[0]), splitLine: { show: false }, axisLabel: { color: css("--text-secondary") } },
+    series: [{ type: "bar", data: r.map((x) => +x[1].toFixed(1)), barMaxWidth: 12, itemStyle: { color, borderRadius: [0, 4, 4, 0] },
+      label: { show: true, position: "right", color: css("--text-secondary"), formatter: "{c}%" } }],
+  });
+}
+
+const followerPeriod = document.getElementById("follower-period");
+const followerMetrics = document.querySelectorAll("[data-follower-metric]");
+let followerMetric = "count";
+
+function followerBucket(timestamp, period) {
+  const offset = 8 * 3600e3;
+  const date = new Date(timestamp + offset);
+  const year = date.getUTCFullYear();
+  const month = period === "year" ? 0 : date.getUTCMonth();
+  const day = period === "year" || period === "month" ? 1 : date.getUTCDate();
+  return Date.UTC(year, month, day, period === "hour" ? date.getUTCHours() : 0) - offset;
+}
+
+function shiftFollowerBucket(timestamp, period, amount) {
+  const offset = 8 * 3600e3;
+  const date = new Date(timestamp + offset);
+  if (period === "hour") date.setUTCHours(date.getUTCHours() + amount);
+  if (period === "day") date.setUTCDate(date.getUTCDate() + amount);
+  if (period === "month") date.setUTCMonth(date.getUTCMonth() + amount);
+  if (period === "year") date.setUTCFullYear(date.getUTCFullYear() + amount);
+  return date.getTime() - offset;
+}
+
+function renderFollowers() {
+  const period = activeTab(followerPeriod);
+  const growth = followerMetric === "growth";
+  const buckets = new Set();
+  const summaries = PKEYS.map((platform) => {
+    const samples = followerHistory[platform] || [];
+    const readings = new Map();
+    samples.forEach(({ fetched_at, followers }, index) => {
+      const bucket = followerBucket(fetched_at, period);
+      if (!readings.has(bucket)) {
+        readings.set(bucket, { first: followers, previous: samples[index - 1]?.followers, count: 0 });
+      }
+      const reading = readings.get(bucket);
+      reading.last = followers;
+      reading.count += 1;
+      buckets.add(bucket);
+    });
+    return { platform, readings };
+  });
+  const times = [...buckets].sort((a, b) => a - b);
+  if (times.length > 0 && times.length < 7) {
+    const first = times[0];
+    const last = times.at(-1);
+    const before = Math.ceil((7 - times.length) / 2);
+    const after = 7 - times.length - before;
+    times.unshift(...Array.from({ length: before }, (_, index) =>
+      shiftFollowerBucket(first, period, index - before)));
+    times.push(...Array.from({ length: after }, (_, index) =>
+      shiftFollowerBucket(last, period, index + 1)));
+  }
+  const series = summaries.map(({ platform, readings }) => {
+    const data = times.map((time) => {
+      const reading = readings.get(time);
+      if (!reading) return null;
+      if (!growth) return reading.last;
+      const baseline = reading.previous ?? (reading.count > 1 ? reading.first : null);
+      return baseline > 0 ? (reading.last - baseline) / baseline * 100 : null;
+    });
+    const lastIndex = data.findLastIndex((value) => value != null);
+    return { name: PF[platform], type: "line", color: pcol(platform), showSymbol: true,
+      symbol: "image://" + platformIcon[PF[platform]], symbolOffset: [13, 0],
+      symbolSize: (_, { dataIndex }) => dataIndex === lastIndex ? 17 : 0, connectNulls: true, data };
+  }).filter((item) => item.data.some((value) => value != null));
+  if (!series.length) {
+    empty("c-followers", growth ? "暂无可计算的粉丝涨幅，需要两次采集且期初粉丝数大于 0" : "暂无粉丝数记录");
+    return;
+  }
+  const dateOptions = {
+    hour: { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" },
+    day: { year: "numeric", month: "2-digit", day: "2-digit" },
+    month: { year: "numeric", month: "short" },
+    year: { year: "numeric" },
+  };
+  const label = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", ...dateOptions[period] });
+  const values = series.flatMap((item) => item.data.filter((value) => value != null));
+  const allZero = values.every((value) => value === 0);
+  const yBounds = allZero ? (growth ? { min: -1, max: 1, interval: 0.5 } : { min: 0, max: 4, interval: 1 }) : {};
+  const b = base();
+  draw("c-followers", { ...b, legend: platformLegend(series.map((item) => item.name), { top: 0 }),
+    tooltip: { ...b.tooltip, formatter: (items) => esc(items[0]?.axisValueLabel) +
+      items.filter((item) => item.value != null).map((item) => platformTooltipRow(item, growth ? pct : fmt)).join("") },
+    xAxis: { ...b.xAxis, type: "category", position: "bottom", axisLine: { ...b.xAxis.axisLine, onZero: false },
+      axisLabel: { ...b.xAxis.axisLabel, showMinLabel: true, showMaxLabel: true, hideOverlap: true },
+      data: times.map((time) => label.format(time)) },
+    yAxis: { ...b.yAxis, type: "value", ...(growth ? {} : { minInterval: 1 }), ...yBounds,
+      axisLabel: { ...b.yAxis.axisLabel, formatter: (value) => growth ? pct(value) : fmt(value) } },
+    series });
+}
+
+followerMetrics.forEach((button) => button.addEventListener("click", () => {
+  followerMetric = button.dataset.followerMetric;
+  followerMetrics.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+  renderFollowers();
+}));
+bindTabs(followerPeriod, renderFollowers);
+
+/* ---------- 总览 ---------- */
+const sum = (arr, k) => arr.some((p) => p.latest[k] != null)
+  ? arr.reduce((s, p) => s + (p.latest[k] ?? 0), 0) : null;
+
+function latestInPeriod(history, metric, start, end) {
+  return history.findLast((sample) =>
+    sample.fetched_at >= start && sample.fetched_at < end && sample[metric] != null)?.[metric] ?? null;
+}
+
+function platformMetric(label, current, compare, format = fmt) {
+  if (current == null) {
+    return `<div class="kv"><div class="k">${label}</div><div class="v metric-unavailable">暂无数据</div></div>`;
+  }
+  const now = D.generated_at ?? Date.now();
+  const periods = [["较昨日", "day"], ["较上月", "month"]];
+  const changes = periods.map(([prefix, period]) => {
+    const end = followerBucket(now, period);
+    const start = shiftFollowerBucket(end, period, -1);
+    const delta = compare?.(start, end);
+    if (delta == null) return "";
+    const direction = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+    const symbol = delta > 0 ? "▲ +" : delta < 0 ? "▼ −" : "● ";
+    return `<span class="rel ${direction}">${prefix} ${symbol}${fmt(Math.abs(delta))}</span>`;
+  });
+  return `<div class="kv"><div class="k">${label}</div><div class="platform-metric"><div class="v">${format(current)}</div>
+    ${changes.some(Boolean) ? `<div class="platform-change">${changes.join("")}</div>` : ""}</div></div>`;
+}
+
+function engagementChange(posts, metric, start, end) {
+  let change = 0;
+  let comparable = 0;
+  for (const post of posts) {
+    const current = post.latest[metric];
+    if (current == null) continue;
+    if (post.latest.fetched_at < end) return null;
+    const previous = latestInPeriod(post.history || [], metric, start, end);
+    if (previous != null) {
+      comparable++;
+      change += current - previous;
+    } else if (post.post_time != null && post.post_time >= end) {
+      change += current;
+    } else {
+      return null;
+    }
+  }
+  return comparable ? change : null;
+}
+
+function renderOverview() {
+  const works = D.works;
+  document.getElementById("ov-scope").textContent = `${ACCOUNT_LABELS[accountType] || ""} · 全部已采集作品`;
+  const viewCoverage = posts.filter((post) => post.latest.views != null).length;
+  const trackedPlatforms = PKEYS.filter((platform) => followerCount(platform) != null);
+  document.getElementById("ov-stats").innerHTML = [
+    ["已采集发布", fmt(posts.length), "<small>条</small>"],
+    ["已采集浏览 / 播放", fmt(sum(posts, "views")), `<small>${viewCoverage}/${posts.length} 条有数据</small>`],
+    ["已采集粉丝数合计", fmt(trackedPlatforms.length
+      ? trackedPlatforms.reduce((total, platform) => total + followerCount(platform), 0) : null),
+      `<small>${trackedPlatforms.length}/${PKEYS.length} 个平台</small>`],
+    ["每个作品平均发布平台数", fmt(works.length ? posts.length / works.length : null, 1),
+      "<small>按自动配对统计</small>"],
+  ].map(([label, value, detail], index) => `<div class="stat${index === 1 ? " accent" : ""}"><div class="label">${label}</div><div class="value">${value}${detail}</div></div>`).join("");
+  const platformCard = (k) => {
+    const g = posts.filter((p) => p.platform === k);
+    const followers = followerCount(k);
+    const med = (f) => median(g.map(f));
+    return `<section class="card pcard"><div class="card-head">${pfTag(k)}<p>${g.length ? g.length + " 条发布" : "暂无发布数据"}</p></div><div class="panel"><div class="rows">
+      ${platformMetric("浏览 / 播放", sum(g, "views"))}
+      ${platformMetric("粉丝数", followers, (start, end) => {
+        const history = followerHistory[k] || [];
+        const baseline = latestInPeriod(history, "followers", start, end);
+        return baseline == null || history.at(-1).fetched_at < end ? null : followers - baseline;
+      })}
+      ${[["点赞", "likes"], ["评论", "comments"], ["收藏", "collects"]].map(([label, metric]) =>
+        platformMetric(label, sum(g, metric), (start, end) => engagementChange(g, metric, start, end))).join("")}
+      ${mediaType === "video" ? platformMetric("5 秒留存中位数", med((p) => p.latest.finish5s_rate), null, pct) +
+        platformMetric("完播率中位数", med((p) => p.latest.finish_rate), null, pct) : ""}
+      ${platformMetric("互动率中位数", med((p) => p.derived.interaction_rate), null, pct)}
+    </div></div></section>`;
+  };
+  for (const [id, platforms] of [["ov-international", ["tiktok", "instagram", "youtube", "x"]], ["ov-domestic", ["xhs", "douyin", "channels"]]]) {
+    const section = document.getElementById(id);
+    section.innerHTML = platforms.map(platformCard).join("");
+    section.hidden = !section.childElementCount;
+    document.getElementById(id + "-title").hidden = section.hidden;
+  }
+  renderFollowers();
+  renderCrossPlatformWorks();
+}
+
+const worksMetric = document.getElementById("ov-works-metric");
+bindTabs(worksMetric, renderCrossPlatformWorks);
+
+function renderCrossPlatformWorks() {
+  const metric = activeTab(worksMetric);
+  const label = worksMetric.querySelector('button[data-value][aria-pressed="true"]').textContent;
+  document.getElementById("ov-works-title").textContent = "各平台" + label + "构成";
+  const crossPlatform = D.works.filter((work) =>
+    new Set(work.posts.map((post) => post.platform)).size >= 2 &&
+    work.posts.some((post) => post.latest[metric] != null));
+  document.getElementById("ov-count").textContent = crossPlatform.length;
+  const ws = crossPlatform.slice(0, 12).reverse();
+  if (!ws.length) return empty("c-ov-works", "暂无有" + label + "数据的跨平台作品");
+  const covers = ws.map((work) => work.posts.map((post) => thumbnailUrl(post.thumbnail_url)).find(Boolean));
+  const rich = Object.fromEntries(covers.flatMap((url, index) => url
+    ? [[`cover${index}`, { width: 34, height: 46, color: "transparent", borderRadius: 4, backgroundColor: { image: url } }]] : []));
+  const b = base();
+  const series = PKEYS.map((k) => ({
+    name: PF[k], type: "bar", stack: "v", barMaxWidth: 28,
+    itemStyle: { color: pcol(k), borderColor: css("--inner"), borderWidth: 1 },
+    data: ws.map((w) => sum(w.posts.filter((post) => post.platform === k), metric)),
+    label: {
+      show: true, position: "inside",
+      formatter: ({ value }) => value > 0 ? "{icon| }" : "",
+      rich: { icon: { width: 14, height: 14, backgroundColor: {
+        image: k === "xhs" ? platformIcon[PF[k]] : new URL("platform-icons/on-bar/" + k + ".svg", document.baseURI).href,
+      } } },
+    },
+    labelLayout: { hideOverlap: true },
+  })).filter((item) => item.data.some((value) => value != null));
+  draw("c-ov-works", { ...b, legend: platformLegend(series.map((item) => item.name), b.legend),
+    tooltip: { ...b.tooltip, axisPointer: { type: "shadow", label: { show: false } },
+      formatter: (items) => items.filter((item) => item.value != null)
+        .map((item) => platformTooltipRow(item, fmt)).join("") },
+    xAxis: { ...b.xAxis, type: "category", data: ws.map((work) => work.work_id),
+      axisLabel: { interval: 0, margin: 10, rich,
+        formatter: (_, index) => covers[index] ? `{cover${index}|·}` : "" } },
+    yAxis: { ...b.yAxis, type: "value" },
+    series,
+  });
+}
+
+/* ---------- 作品对比 ---------- */
+const comparePlatforms = document.getElementById("compare-platforms");
+const compareFilters = { region: "", metric: "", sort: "views", basis: "mean" };
+const compareRegions = { "": PKEYS, domestic: ["xhs", "douyin", "channels"], overseas: ["tiktok", "instagram", "youtube", "x"] };
+const compareOptions = {
+  region: [["", "全部"], ["domestic", "国内"], ["overseas", "海外"]],
+  metric: [["", "全部"], ["views", "播放"], ["likes", "赞"], ["comments", "评论"], ["collects", "收藏"]],
+  sort: [["", "默认"], ["views", "播放最多"], ["likes", "点赞最多"], ["comments", "评论最多"], ["collects", "收藏最多"]],
+  basis: [["mean", "同平台平均数"], ["previous", "上一条发布"]],
+};
+const compareFrom = document.getElementById("compare-from");
+const compareTo = document.getElementById("compare-to");
+const compareDate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" });
+const imagePreview = document.getElementById("image-preview");
+const previewImage = imagePreview.querySelector("img");
+const previewVideo = document.getElementById("preview-video");
+const previewError = document.getElementById("image-preview-error");
+imagePreview.addEventListener("click", (event) => { if (event.target === imagePreview) imagePreview.close(); });
+imagePreview.addEventListener("close", () => {
+  previewVideo.pause();
+  previewVideo.removeAttribute("src");
+  previewVideo.load();
+  previewVideo.hidden = true;
+});
+previewVideo.addEventListener("error", () => {
+  previewImage.hidden = true;
+  previewError.hidden = false;
+});
+function openMediaPreview(src, isVideo) {
+  if (!src) return;
+  previewError.hidden = true;
+  previewImage.hidden = isVideo;
+  previewVideo.hidden = !isVideo;
+  if (isVideo) {
+    previewImage.removeAttribute("src");
+    previewVideo.src = src;
+    previewVideo.play().catch(() => {});
+  } else {
+    previewVideo.pause();
+    previewVideo.removeAttribute("src");
+    previewImage.referrerPolicy = "no-referrer";
+    previewImage.src = src;
+  }
+  if (!imagePreview.open) imagePreview.showModal();
+}
+previewImage.addEventListener("error", () => {
+  previewImage.hidden = true;
+  previewError.hidden = false;
+});
+
+function thumbnailUrl(url) {
+  if (typeof url !== "string") return "";
+  try {
+    const parsed = new URL(url.startsWith("//") ? "https:" + url : url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : "";
+  } catch {
+    return "";
+  }
+}
+// 封面上传后可能是 data URL，也可能还是远程链接
+function coverSource(value) {
+  if (typeof value !== "string" || !value) return "";
+  if (value.startsWith("data:image/") || value.startsWith("data:video/")) return value;
+  return thumbnailUrl(value);
+}
+
+let comparePlatform = "";
+function renderComparePlatforms() {
+  comparePlatforms.innerHTML = [["", "全部平台"], ...compareRegions[compareFilters.region].map((key) => [key, PF[key]])]
+    .map(([key, label]) => `<button type="button" data-platform="${key}" aria-pressed="${key === comparePlatform}">${label}</button>`).join("");
+  renderSortOptions();
+}
+// 曝光只有小红书提供，切到小红书时才显示这个排序项
+function renderSortOptions() {
+  const control = document.getElementById("compare-sort");
+  const choices = comparePlatform === "xhs"
+    ? [...compareOptions.sort, ["impressions", "曝光最多"]]
+    : compareOptions.sort;
+  if (compareFilters.sort && !choices.some(([key]) => key === compareFilters.sort)) compareFilters.sort = "";
+  control.innerHTML = choices.map(([key, label]) =>
+    `<button type="button" data-value="${key}" aria-pressed="${key === compareFilters.sort}">${label}</button>`).join("");
+}
+renderComparePlatforms();
+for (const [group, choices] of Object.entries(compareOptions)) {
+  const control = document.getElementById("compare-" + group);
+  if (group !== "sort") control.innerHTML = choices.map(([key, label]) =>
+    `<button type="button" data-value="${key}" aria-pressed="${key === compareFilters[group]}">${label}</button>`).join("");
+  control.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-value]");
+    if (!button || button.dataset.value === compareFilters[group]) return;
+    compareFilters[group] = button.dataset.value;
+    control.querySelectorAll("button").forEach((item) =>
+      item.setAttribute("aria-pressed", String(item.dataset.value === compareFilters[group])));
+    if (group === "region") {
+      comparePlatform = "";
+      renderComparePlatforms();
+    }
+    renderCompare();
+  });
+}
+comparePlatforms.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-platform]");
+  if (!button) return;
+  comparePlatform = button.dataset.platform;
+  comparePlatforms.querySelectorAll("button").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+  renderSortOptions();
+  renderCompare();
+});
+
+function imageButton(url) {
+  return `<button type="button" class="work-thumbnail" data-image="${esc(url)}" aria-label="放大作品图片"><img src="${esc(url)}" alt="" loading="lazy" referrerpolicy="no-referrer"></button>`;
+}
+
+function videoButton(url) {
+  return `<button type="button" class="work-thumbnail" data-video="${esc(url)}" aria-label="播放封面视频"><video src="${esc(url)}" muted playsinline preload="metadata"></video><span class="cover-upload-badge">视频</span></button>`;
+}
+
+function postGallery(post) {
+  const images = (post.image_urls?.length ? post.image_urls : [post.thumbnail_url]).map(thumbnailUrl).filter(Boolean);
+  return images.length ? `<div class="work-gallery">${[...new Set(images)].map(imageButton).join("")}</div>` : "";
+}
+
+function bindImagePreviews(container) {
+  container.querySelectorAll(".work-thumbnail").forEach((button) => {
+    if (button.dataset.previewBound) return;
+    button.dataset.previewBound = "1";
+    const image = button.querySelector("img");
+    const video = button.querySelector("video");
+    for (const media of [image, video]) {
+      if (!media) continue;
+      media.addEventListener("error", () => button.remove());
+      if (image && media === image && image.complete && !image.naturalWidth) button.remove();
+    }
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openMediaPreview(button.dataset.video || button.dataset.image, Boolean(button.dataset.video));
+    });
+  });
+}
+
+const comparePageSize = 10;
+let comparePage = 1;
+const comparePagination = document.getElementById("compare-pagination");
+const comparePagePrev = document.getElementById("compare-page-prev");
+const comparePageNext = document.getElementById("compare-page-next");
+comparePagePrev.addEventListener("click", () => renderCompare(comparePage - 1));
+comparePageNext.addEventListener("click", () => renderCompare(comparePage + 1));
+
+const compareViewTabs = document.getElementById("compare-view-tabs");
+const compareTrendMode = document.getElementById("compare-trend-mode");
+const compareTrendPeriod = document.getElementById("compare-trend-period");
+const compareTrendMetric = document.getElementById("compare-trend-metric");
+const compareTrendWork = document.getElementById("compare-trend-work");
+
+bindTabs(compareViewTabs, () => renderCompare(comparePage));
+for (const control of [compareTrendMode, compareTrendPeriod, compareTrendMetric]) {
+  bindTabs(control, () => renderCompare(comparePage));
+}
+let trendWorkId = "";
+compareTrendWork.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && compareTrendWork.open) {
+    compareTrendWork.open = false;
+    compareTrendWork.querySelector("summary").focus();
+  }
+});
+
+function trendWorkCover(entry) {
+  const title = entry.title || entry.work.title || "未命名作品";
+  const url = entry.scopedPosts.map((post) => thumbnailUrl(post.thumbnail_url)).find(Boolean);
+  return url ? `<img src="${esc(url)}" alt="" referrerpolicy="no-referrer" title="${esc(title)}">`
+    : '<span class="cover-missing" title="暂无封面"></span>';
+}
+
+function alignTrendLabels(chart, legend, labels) {
+  const connectors = document.getElementById("compare-trend-connectors");
+  connectors.replaceChildren();
+  if (innerWidth <= 760 || !chart.getWidth() || !legend.clientHeight) return;
+  const chartBox = chart.getDom().getBoundingClientRect();
+  const railBox = legend.getBoundingClientRect();
+  const bodyBox = legend.parentElement.getBoundingClientRect();
+  const rows = labels.map((label) => {
+    const point = label.data.at(-1);
+    const y = chart.convertToPixel({ yAxisIndex: 0 }, point[1]);
+    return { ...label, y: Number.isFinite(y) ? y : chart.getHeight() / 2,
+      height: label.button.offsetHeight, active: label.button.getAttribute("aria-pressed") === "true" };
+  }).sort((a, b) => Number(b.active) - Number(a.active) || a.y - b.y);
+  let bottom = -5;
+  for (const row of rows) {
+    const desired = row.active ? row.y - row.height / 2 : railBox.height - row.height;
+    row.top = Math.max(bottom + 5, desired);
+    bottom = row.top + row.height;
+  }
+  let next = railBox.height + 5;
+  for (const row of rows.slice().reverse()) {
+    row.top = Math.min(row.top, next - row.height - 5);
+    next = row.top;
+  }
+  for (const row of rows) {
+    row.button.style.top = Math.max(0, row.top) + "px";
+    if (!row.active) continue;
+    const [x] = chart.convertToPixel({ xAxisIndex: 0, yAxisIndex: 0 }, row.data.at(-1));
+    if (!Number.isFinite(x)) continue;
+    const startX = chartBox.left - bodyBox.left + x;
+    const edgeX = chartBox.right - bodyBox.left;
+    const endX = railBox.left - bodyBox.left + 12;
+    const startY = chartBox.top - bodyBox.top + row.y;
+    const endY = railBox.top - bodyBox.top + Math.max(0, row.top) + row.height / 2;
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    line.setAttribute("d", `M ${startX} ${startY} H ${edgeX} L ${endX} ${endY}`);
+    line.setAttribute("fill", "none");
+    line.setAttribute("stroke", row.color);
+    line.setAttribute("stroke-dasharray", "3 4");
+    connectors.append(line);
+  }
+}
+
+function renderCompareTrend(entries) {
+  const single = activeTab(compareTrendMode) === "single";
+  const metric = activeTab(compareTrendMetric);
+  const period = activeTab(compareTrendPeriod);
+  const publications = single ? entries.flatMap((entry) => entry.scopedPosts.map((post) => ({
+    ...entry, scopedPosts: [post], title: post.title || post.subtitle || entry.title,
+    selectionId: post.platform + ":" + post.post_id,
+  }))).sort((a, b) => (b.scopedPosts[0].post_time ?? 0) - (a.scopedPosts[0].post_time ?? 0)) : [];
+  const current = publications.find((entry) => entry.selectionId === trendWorkId) || publications[0];
+  compareTrendWork.hidden = !single || !current;
+  if (single && current) {
+    trendWorkId = current.selectionId;
+    const summary = compareTrendWork.querySelector("summary");
+    summary.innerHTML = trendWorkCover(current);
+    summary.setAttribute("aria-label", "选择发布，当前为 " + PF[current.scopedPosts[0].platform] + " " + (current.title || current.work.title || "未命名作品"));
+    const options = compareTrendWork.querySelector(".trend-picker-options");
+    options.innerHTML = publications.map((entry) => {
+      const platform = entry.scopedPosts[0].platform;
+      const label = PF[platform] + " · " + (entry.title || entry.work.title || "未命名作品");
+      return `<button type="button" class="trend-picker-option" data-work="${esc(entry.selectionId)}" title="${esc(label)}" aria-label="${esc(label)}" aria-pressed="${entry === current}">${trendWorkCover(entry)}<img class="trend-picker-platform" src="${esc(platformIcon[PF[platform]])}" alt=""></button>`;
+    }).join("");
+    options.querySelectorAll("button").forEach((button) => button.addEventListener("click", () => {
+      trendWorkId = button.dataset.work;
+      compareTrendWork.open = false;
+      renderCompare(comparePage);
+      summary.focus();
+    }));
+  } else {
+    compareTrendWork.open = false;
+  }
+  const selected = single ? (current ? [current] : []) : entries.slice(0, 3);
+  const legend = document.getElementById("compare-trend-legend");
+  legend.replaceChildren();
+  document.getElementById("compare-trend-connectors").replaceChildren();
+  const colors = ["#5470c6", "#91cc75", "#d49924", "#ee6666", "#73a0c6", "#3ba272", "#b06da9", "#ea7ccc"];
+  const traces = selected.flatMap(({ work, scopedPosts }) => scopedPosts.map((post) => {
+    const buckets = new Map();
+    for (const sample of post.history || []) {
+      if (sample[metric] == null || !Number.isFinite(sample.fetched_at)) continue;
+      buckets.set(followerBucket(sample.fetched_at, period), sample[metric]);
+    }
+    const platform = PF[post.platform];
+    const name = post.platform + ":" + post.post_id;
+    const image = single ? thumbnailUrl(post.thumbnail_url) : work.posts.map((item) => thumbnailUrl(item.thumbnail_url)).find(Boolean);
+    return { platform, platformKey: post.platform, name, image, title: work.title,
+      data: [...buckets].sort(([a], [b]) => a - b) };
+  })).filter(({ data }) => data.length);
+  if (!traces.length) return empty("c-compare-trend", "暂无符合条件的互动采样");
+  const dateOptions = {
+    hour: { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" },
+    day: { year: "numeric", month: "2-digit", day: "2-digit" },
+    month: { year: "numeric", month: "2-digit" },
+    year: { year: "numeric" },
+  };
+  const formatDate = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", ...dateOptions[period] });
+  const b = base();
+  const labels = Object.fromEntries(traces.map((trace) => [trace.name, trace.platform]));
+  const endLabels = [];
+  legend.parentElement.style.setProperty("--trend-label-height", traces.length * 48 + "px");
+  const series = traces.map((trace, index) => {
+    const color = single ? pcol(trace.platformKey) : colors[index % colors.length];
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "compare-trend-series";
+    button.style.setProperty("--series-color", color);
+    button.title = trace.title ? trace.platform + " · " + trace.title : trace.platform;
+    button.setAttribute("aria-label", button.title);
+    button.setAttribute("aria-pressed", "true");
+    if (trace.image) {
+      const image = document.createElement("img");
+      image.className = "compare-trend-cover";
+      image.alt = "";
+      image.referrerPolicy = "no-referrer";
+      image.addEventListener("error", () => image.remove());
+      image.src = trace.image;
+      button.append(image);
+    }
+    const icon = document.createElement("img");
+    icon.className = "trend-platform-icon";
+    icon.src = platformIcon[trace.platform];
+    icon.alt = "";
+    const info = document.createElement("span");
+    info.className = "compare-trend-series-info";
+    const time = document.createElement("time");
+    time.className = "compare-trend-series-time";
+    const timestamp = trace.data.at(-1)[0];
+    time.dateTime = new Date(timestamp).toISOString();
+    time.textContent = formatDate.format(timestamp);
+    time.title = "最后一个数据点的北京时间";
+    const value = document.createElement("strong");
+    value.className = "compare-trend-series-value";
+    value.textContent = fmt(trace.data.at(-1)[1]);
+    value.title = { views: "浏览／播放", likes: "点赞", comments: "评论", collects: "收藏" }[metric];
+    info.append(value, time);
+    button.append(icon, info);
+    button.addEventListener("click", () => {
+      const visible = button.getAttribute("aria-pressed") === "true";
+      button.setAttribute("aria-pressed", String(!visible));
+      charts["c-compare-trend"].dispatchAction({ type: visible ? "legendUnSelect" : "legendSelect", name: trace.name });
+    });
+    legend.append(button);
+    endLabels.push({ button, color, data: trace.data });
+    return { name: trace.name, type: "line", color, showSymbol: true, data: trace.data };
+  });
+  draw("c-compare-trend", { ...b, legend: { show: false },
+    grid: { ...b.grid, top: 14, bottom: 14 },
+    tooltip: { ...b.tooltip, formatter: (items) => items.length
+      ? esc(formatDate.format(items[0].value[0])) + "<br>" +
+        items.map((item) => platformTooltipRow({ seriesName: labels[item.seriesName], value: item.value[1] }, fmt)).join("")
+      : "" },
+    xAxis: { ...b.xAxis, type: "time", axisLabel: { ...b.xAxis.axisLabel, hideOverlap: true, showMaxLabel: true, formatter: (value) => formatDate.format(value) } },
+    yAxis: { ...b.yAxis, type: "value", minInterval: 1 },
+    series,
+  });
+  const chart = charts["c-compare-trend"];
+  chart.off("finished");
+  chart.on("finished", () => alignTrendLabels(chart, legend, endLabels));
+  chart.resize();
+  alignTrendLabels(chart, legend, endLabels);
+}
+
+function renderCompare(page = 1) {
+  const keys = comparePlatform ? [comparePlatform] : compareRegions[compareFilters.region];
+  const entries = D.works.map((work) => {
+    const selected = work.posts.find((post) => post.platform === comparePlatform);
+    const scopedPosts = work.posts.filter((post) => keys.includes(post.platform));
+    return { work, selected, scopedPosts, title: selected ? selected.title : work.title };
+  }).filter(({ work, selected, scopedPosts, title }) => {
+    if (compareFilters.region && !scopedPosts.length) return false;
+    if (comparePlatform && (!selected || ((!title?.trim() || title.trim() === "无标题") && !selected.subtitle))) return false;
+    if (!compareFrom.value && !compareTo.value) return true;
+    if (work.first_post_time == null) return false;
+    const day = compareDate.format(work.first_post_time);
+    return (!compareFrom.value || day >= compareFrom.value) && (!compareTo.value || day <= compareTo.value);
+  });
+  const sortMetric = compareFilters.sort;
+  const displayMetric = compareFilters.metric;
+  const totalMetric = displayMetric || sortMetric || "views";
+  const metricLabels = { views: "播放", likes: "赞", comments: "评论", collects: "收藏", impressions: "曝光" };
+  const sortValue = ({ scopedPosts }) => sum(scopedPosts, sortMetric) ?? -1;
+  const publicationTime = ({ work, selected }) => (selected ? selected.post_time : work.first_post_time) ?? -1;
+  const chartView = activeTab(compareViewTabs) === "chart";
+  document.getElementById("compare-data-panel").hidden = chartView;
+  document.getElementById("compare-table-options").hidden = chartView;
+  document.getElementById("compare-trend-panel").hidden = !chartView;
+  if (chartView) {
+    comparePage = page;
+    return renderCompareTrend(entries.sort((a, b) => publicationTime(b) - publicationTime(a)));
+  }
+  entries.sort(sortMetric
+    ? (a, b) => sortValue(b) - sortValue(a)
+    : (a, b) => publicationTime(b) - publicationTime(a));
+  const table = document.getElementById("t-compare");
+  table.dataset.platform = comparePlatform;
+  const previous = new Map();
+  if (compareFilters.basis === "previous") {
+    for (const platform of keys) {
+      const ordered = posts.filter((post) => post.platform === platform && post.post_time != null)
+        .sort((a, b) => a.post_time - b.post_time);
+      let prior = null;
+      let last = null;
+      for (const post of ordered) {
+        if (last?.post_time !== post.post_time) prior = last;
+        previous.set(post.post_id, prior?.latest);
+        last = post;
+      }
+    }
+  }
+  const comparison = (post, metric) => {
+    const value = post.latest[metric];
+    if (value == null) return "";
+    const useMean = compareFilters.basis === "mean";
+    const prior = previous.get(post.post_id);
+    const key = post.platform + "." + post.media_type + "." + metric;
+    const base = useMean
+      ? D.baseline?.[(post.account_type || "official") + "." + key] ?? D.baseline?.[key]
+      : prior?.[metric];
+    const ratio = base > 0 ? value / base : useMean ? post.rel?.[metric] : null;
+    if (base === 0 && value > 0) {
+      return `<span class="rel up" title="${useMean ? "平均数" : "上一条"}为 0，无法计算百分比">▲ 从 0 增长</span>`;
+    }
+    if (ratio === 1 || (base === 0 && value === 0)) return '<span class="rel flat">● 0%</span>';
+    if (ratio != null) return relChip(ratio, false, true);
+    const missing = useMean || post.post_time == null ? "无基准" : prior ? "上一条无数据" : "无上一条";
+    return `<span class="rel missing">${missing}</span>`;
+  };
+  const cell = (p) => {
+    const metric = (key) =>
+      `<span data-metric="${key}">${metricLabels[key]} ${fmt(p.latest[key])} ${comparison(p, key)}</span>`;
+    if (displayMetric) return `<div class="cell-metrics">${metric(displayMetric)}</div>`;
+    return `<div class="cell">
+      <div class="cell-metrics">
+        ${metric("views")}${metric("likes")}
+        ${metric("comments")}${metric("collects")}
+      </div>
+      ${p.latest.finish5s_rate == null ? "" : `<span data-video>${pct(p.latest.finish5s_rate)} ${comparison(p, "finish5s_rate")}</span>`}
+      ${sortMetric === "impressions" ? metric("impressions") : ""}
+    </div>`;
+  };
+  const header = `<thead><tr><th>作品</th><th><span class="compare-column-label">${comparePlatform ? "发布时间" : "首发"}</span></th>${keys.map((key) => `<th><span class="compare-column-label">${PF[key]}</span></th>`).join("")}${comparePlatform ? "" : `<th>合计${totalMetric === "views" ? "浏览 / 播放" : totalMetric === "likes" ? "点赞" : metricLabels[totalMetric]}</th>`}</tr></thead>`;
+  const pageCount = Math.max(1, Math.ceil(entries.length / comparePageSize));
+  comparePage = Math.min(pageCount, Math.max(1, page));
+  const start = (comparePage - 1) * comparePageSize;
+  const end = Math.min(start + comparePageSize, entries.length);
+  comparePagination.hidden = entries.length === 0;
+  document.getElementById("compare-page-count").textContent = `第 ${start + 1}–${end} 条，共 ${entries.length} 条`;
+  document.getElementById("compare-page-number").textContent = `${comparePage} / ${pageCount}`;
+  comparePagePrev.disabled = comparePage === 1;
+  comparePageNext.disabled = comparePage === pageCount;
+  const rows = entries.slice(start, end).map(({ work, selected, scopedPosts }) => {
+    const cover = scopedPosts.map((post) => thumbnailUrl(post.thumbnail_url)).find(Boolean);
+    const thumbnail = selected ? postGallery(selected) : cover ? imageButton(cover) : "";
+    return `<tr data-id="${esc(work.work_id)}"><td>${thumbnail}</td>
+      <td><span class="compare-date-value">${dt(selected ? selected.post_time : work.first_post_time)}</span></td>${keys.map((key) => {
+        const post = work.posts.find((item) => item.platform === key);
+        return post ? `<td>${cell(post)}</td>` : '<td class="na">暂无数据</td>';
+      }).join("")}${comparePlatform ? "" : `<td><b>${fmt(sum(scopedPosts, totalMetric))}</b></td>`}</tr>`;
+  });
+  const message = compareFrom.value && compareTo.value && compareFrom.value > compareTo.value
+    ? "首发起始日期须早于或等于截止日期" : "暂无符合条件的作品";
+  const emptyRow = `<tr><td class="empty" colspan="${comparePlatform ? 3 : keys.length + 3}">${message}</td></tr>`;
+  const columns = comparePlatform ? '<colgroup><col><col class="compare-date-column"><col class="compare-metrics-column"></colgroup>' : "";
+  table.innerHTML = columns + header + "<tbody>" + (rows.length ? rows.join("") : emptyRow) + "</tbody>";
+  bindImagePreviews(table);
+  table.querySelectorAll("tbody tr[data-id]").forEach((row) => row.onclick = () => {
+    const params = new URLSearchParams({ work: row.dataset.id });
+    if (comparePlatform) params.set("platform", comparePlatform);
+    location.hash = "diagnose?" + params;
+  });
+}
+
+/* ---------- 单条诊断 ---------- */
+// 漏斗：按观众的观看顺序，每一步对应一类要改的东西
+const STAGES = [
+  { key: "cover_click_rate", name: "点进来", sub: "封面点击率", tip: "改封面和标题：信息点前置、字更大、给出具体收益" },
+  { key: "finish5s_rate", name: "留下来", sub: "5 秒留存", tip: "改开头 3 秒：先给结论或冲突，去掉寒暄和片头", alt: "exit2s_rate" },
+  { key: "view_ratio", name: "看下去", sub: "看了全片的几成", tip: "压节奏：删掉重复和铺垫，每 5–8 秒给一个新信息点", derived: true },
+  { key: "finish_rate", name: "看完", sub: "完播率", tip: "缩短时长或在结尾前埋一个钩子，比如结尾才揭晓答案" },
+  { key: "interaction_rate", name: "有反应", sub: "互动率", tip: "抛一个能回答的问题，引导评论和收藏", derived: true },
+];
+function stageVal(p, s) {
+  if (s.key === "finish5s_rate" && p.latest.finish5s_rate == null && p.latest.exit2s_rate != null)
+    return { v: p.latest.exit2s_rate, label: "快速划走率", r: p.rel.exit2s_rate, lower: true };
+  const v = s.derived ? p.derived[s.key] : p.latest[s.key];
+  return { v, r: p.rel[s.key], label: s.sub };
+}
+function funnelCard(p) {
+  let bottle = null;
+  const rows = STAGES.map((s) => {
+    const { v, r, label, lower } = stageVal(p, s);
+    if (v == null) return `<div class="stage"><div class="name">${s.name}<small>${label}</small></div><div class="val na">这个平台没有这项数据</div></div>`;
+    const bad = r != null && (lower ? r > 1.15 : r < 0.85);
+    if (bad && !bottle) bottle = s;
+    const shown = pct(v);
+    return `<div class="stage${bad && bottle === s ? " bottle" : ""}"><div class="name">${s.name}<small>${label}</small></div><div class="val"><b>${shown}</b>${relChip(r, lower)}</div>${bad && bottle === s ? `<div class="tip">${s.tip}</div>` : ""}</div>`;
+  }).join("");
+  const hasBase = Object.values(p.rel).some((x) => x != null);
+  const verdict = !hasBase ? `这个平台的视频还不到 3 条，先只看数值，暂不判断高低`
+    : bottle ? `最先掉下去的是「${bottle.name}」：${bottle.tip}` : `每一步都不低于平时，这条在${PF[p.platform]}表现正常或更好`;
+  return `<section class="card pcard"><div class="card-head diag-head">${pfTag(p.platform)}<span class="eyebrow">播放 ${fmt(p.latest.views)} · 粉丝数 ${fmt(followerCount(p.platform))} · 发布 ${dt(p.post_time)}</span></div>
+    <div class="panel"><div class="funnel">${rows}</div><div class="verdict">${verdict}</div></div></section>`;
+}
+function renderDiagnose() {
+  const params = new URLSearchParams(location.hash.split("?")[1]);
+  const available = new Set(D.works.flatMap((work) => work.posts.map((post) => post.platform)));
+  const requestedPlatform = params.get("platform");
+  const platform = available.has(requestedPlatform) ? requestedPlatform : "";
+  const scoped = Boolean(platform);
+  pickPlatform.replaceChildren(new Option("全部平台", ""), ...PKEYS.filter((key) => available.has(key))
+    .map((key) => new Option(PF[key], key)));
+  pickPlatform.value = platform;
+  diagnoseFrom.value = params.get("from") || "";
+  diagnoseTo.value = params.get("to") || "";
+  const from = diagnoseFrom.value;
+  const to = diagnoseTo.value;
+  diagnoseCalendar.refresh();
+  const selectedPost = (work) => scoped ? work.posts.find((post) => post.platform === platform) : null;
+  const works = D.works.filter((work) => {
+    const post = selectedPost(work);
+    if (scoped && !post) return false;
+    if (!from && !to) return true;
+    const timestamp = scoped ? post.post_time : work.first_post_time;
+    if (timestamp == null) return false;
+    const day = compareDate.format(timestamp);
+    return (!from || day >= from) && (!to || day <= to);
+  });
+  const selected = works.find((work) => work.work_id === params.get("work")) || works[0];
+  pick.hidden = !selected;
+  if (!selected) {
+    pick.open = false;
+    pick.removeAttribute("data-work");
+    pickOptions.replaceChildren();
+    document.getElementById("v-diagnose").hidden = true;
+    const emptyState = document.getElementById("media-empty");
+    emptyState.hidden = false;
+    emptyState.textContent = from && to && from > to ? "发布时间起始日期须早于或等于截止日期" : "暂无符合筛选条件的内容";
+    document.getElementById("title").textContent = "单条诊断";
+    document.getElementById("meta").textContent = "";
+    return;
+  }
+  pick.dataset.work = selected.work_id;
+  const choice = (work) => {
+    const post = selectedPost(work);
+    const title = post ? post.title || post.subtitle || "无标题" : work.title || "无标题";
+    const cover = (post ? [post] : work.posts)
+      .map((item) => thumbnailUrl(item.thumbnail_url) || thumbnailUrl(item.image_urls?.[0])).find(Boolean);
+    const thumbnail = `<span class="work-picker-thumb" aria-hidden="true"><span>无封面</span>${cover ? `<img src="${esc(cover)}" alt="">` : ""}</span>`;
+    return { title, thumbnail };
+  };
+  const current = choice(selected);
+  document.getElementById("pick-current").innerHTML = `${current.thumbnail}<span class="work-picker-title">${esc(short(current.title, 26))}</span>`;
+  pickOptions.innerHTML = works.map((work) => {
+    const { title, thumbnail } = choice(work);
+    return `<button type="button" data-work="${esc(work.work_id)}" aria-label="${esc(title)}" aria-pressed="${work === selected}">${thumbnail}</button>`;
+  }).join("");
+  const post = selectedPost(selected);
+  const w = post ? { ...selected, title: post.title || post.subtitle || "无标题",
+    first_post_time: post.post_time, duration_sec: post.duration_sec, posts: [post] } : selected;
+  // 流量来源、观众画像、播放趋势只有国内平台提供，海外平台不展示这三块
+  const insightPosts = w.posts.filter((item) => DOMESTIC_PLATFORMS.has(item.platform));
+  const showInsights = insightPosts.length > 0;
+  for (const id of ["d-sources-block", "d-audience-block", "d-trend-block"])
+    document.getElementById(id).hidden = !showInsights;
+  document.getElementById("title").textContent = short(w.title, 40);
+  document.getElementById("meta").textContent = `${post ? "发布于" : "首发于"} ${dt(w.first_post_time)}${w.duration_sec ? " · 时长 " + fmt(w.duration_sec) + " 秒" : ""} · ${post ? PF[platform] : "发到 " + w.posts.length + " 个平台"}`;
+  const tags = [...new Set(w.posts.flatMap((p) => (p.tags || "").split(",").filter(Boolean)))];
+  document.getElementById("d-tags").innerHTML = tags.map((t) => `<span class="tag">#${esc(t)}</span>`).join("");
+  const copy = document.getElementById("d-copy");
+  copy.innerHTML = w.posts.map((post) => {
+    const gallery = postGallery(post);
+    const title = post.title?.trim();
+    const heading = title && title !== "无标题" && !/^https?:\/\//i.test(title) ? title : "";
+    const subtitle = post.subtitle?.trim();
+    const url = thumbnailUrl(post.post_url);
+    const link = url ? `<a class="post-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">查看原帖 <span aria-hidden="true">↗</span></a>` : "";
+    if (!heading && !subtitle && !gallery && !link) return "";
+    const headingLabel = post.platform === "x" || post.platform === "instagram" ? "正文" : "标题";
+    const field = (label, value) => `<div class="work-copy-field"><span class="work-copy-label">${label}</span><p class="work-description">${esc(value)}</p></div>`;
+    return `<section class="card"><div class="card-head">${pfTag(post.platform)}${link}</div>
+      <div class="panel">${gallery}${heading ? field(headingLabel, heading) : ""}
+      ${subtitle ? field(heading && post.platform === "tiktok" ? "副标题" : "正文", subtitle) : ""}</div></section>`;
+  }).join("");
+  bindImagePreviews(copy);
+  document.getElementById("d-funnels").innerHTML = w.posts.map(funnelCard).join("");
+
+  // 留存曲线：一张图，各平台一条线，抖音同类平均用虚线
+  const withRet = w.posts.filter((p) => p.retention.length > 1);
+  const drops = document.getElementById("d-drops");
+  if (!withRet.length) { empty("c-d-ret", "平台还没出这条的留存数据（通常发布次日更新）"); drops.innerHTML = ""; }
+  else {
+    const b = base();
+    const series = withRet.map((p) => ({ name: PF[p.platform], type: "line", data: p.retention, showSymbol: p.retention.length < 12, symbolSize: 8,
+      lineStyle: { width: 2, color: pcol(p.platform) }, itemStyle: { color: pcol(p.platform), borderColor: css("--inner"), borderWidth: 2 } }));
+    withRet.filter((p) => p.benchmark.length).forEach((p) => series.push({ name: "抖音同类作者平均", type: "line", data: p.benchmark, showSymbol: false,
+      lineStyle: { width: 1.5, type: "dashed", color: css("--text-muted") }, itemStyle: { color: css("--text-muted") } }));
+    draw("c-d-ret", { ...b,
+      tooltip: { ...b.tooltip, valueFormatter: (v) => fmt(v, 1) + "%" },
+      xAxis: { ...b.xAxis, type: "value", name: "秒", nameTextStyle: { color: css("--text-muted") }, max: Math.max(...withRet.map((p) => p.retention.at(-1)[0])) },
+      yAxis: { ...b.yAxis, type: "value", max: 100, axisLabel: { color: css("--text-muted"), formatter: "{value}%" } },
+      series });
+    drops.innerHTML = withRet.map((p) => {
+      const r = p.retention, d = r.slice(1).map((x, i) => [r[i][0], x[0], r[i][1] - x[1], (r[i][1] - x[1]) / Math.max(1, x[0] - r[i][0])]);
+      const top = d.sort((a, b) => b[3] - a[3]).slice(0, 2);
+      const at5 = r.find((x) => x[0] === 5)?.[1];
+      return `<li>${pfTag(p.platform)}：${top.map(([a, b2, v]) => `<b>${a}→${b2}s</b> 掉 ${fmt(v, 1)} 个点`).join("，")}${at5 != null ? `；第 5 秒还剩 <b>${fmt(at5, 0)}%</b>` : ""}</li>`;
+    }).join("");
+  }
+
+  document.getElementById("d-sources").innerHTML = insightPosts.map((p) => `<section class="card span-4"><div class="card-head">${pfTag(p.platform)}<p>观看来源占比</p></div><div class="panel"><div class="chart" id="c-src-${p.platform}" style="height:220px"></div></div></section>`).join("");
+  insightPosts.forEach((p) => hbar(`c-src-${p.platform}`, p.sources, pcol(p.platform)));
+  const dims = [["gender", "性别"], ["age", "年龄"], ["city", "地域"]];
+  const withAud = insightPosts.filter((p) => Object.keys(p.audience).length);
+  document.getElementById("d-audience").innerHTML = withAud.length ? withAud.flatMap((p) => dims.map(([d, n]) => `<section class="card span-4"><div class="card-head">${pfTag(p.platform)}<p>${n} · 观众占比 %</p></div><div class="panel"><div class="chart" id="c-aud-${p.platform}-${d}" style="height:200px"></div></div></section>`)).join("")
+    : `<section class="card span-12"><div class="panel empty">这几个平台都还没出这条的观众画像</div></section>`;
+  withAud.forEach((p) => dims.forEach(([d]) => hbar(`c-aud-${p.platform}-${d}`, p.audience[d], pcol(p.platform))));
+
+  const tr = insightPosts.map((p) => ({ p, pts: p.trend.hour_views || p.trend.day_views || [], grain: p.trend.hour_views ? "小时" : "天" })).filter((x) => x.pts.length);
+  if (!tr.length) empty("c-d-trend", "暂无趋势数据");
+  else {
+    const b = base();
+    draw("c-d-trend", { ...b,
+      tooltip: { ...b.tooltip, valueFormatter: (v) => fmt(v) },
+      xAxis: { ...b.xAxis, type: "time" },
+      yAxis: { ...b.yAxis, type: "value" },
+      series: tr.map(({ p, pts, grain }) => ({ name: `${PF[p.platform]}（每${grain}）`, type: "line", data: pts, showSymbol: grain === "天", symbolSize: 8, step: grain === "天" ? "end" : false,
+        lineStyle: { width: 2, color: pcol(p.platform) }, itemStyle: { color: pcol(p.platform) } })),
+    });
+  }
+}
+
+/* ---------- 内容规律 ---------- */
+const pendingStorageKey = "shotpoet.pending-publications";
+const publicationExamples = [
+  ["xhs", "2026-11-26", "周末桌面布置", "分享桌面照、收纳方法和灯光设置。", "xhs:6ae210b9000000000502ff79"],
+  ["douyin", "2026-11-27", "一扇发光的门", "用 15 秒展示从文字描述到生成画面的过程。", "x:2120924592411975919"],
+  ["tiktok", "2026-11-28", "One prompt, three textures", "Compare paper cutout, clay, and film looks. End with a vote.", "instagram:DfsHhFNHFvf"],
+  ["instagram", "2026-11-29", "Blue hour, frame by frame", "A carousel of four frames, from the first draft to the final grade.", "tiktok:7711199465528511775"],
+  ["x", "2026-11-30", "What changed between these two frames?", "Post a before-and-after pair with the two prompt edits that made the difference.", "x:2123233635017076746"],
+  ["xhs", "2026-12-01", "冬天的蓝调壁纸", "展示三款壁纸，并附上适用屏幕尺寸。", "xhs:6b015c36000000002b02b450"],
+  ["douyin", "2026-12-02", "同一镜头的三次光线实验", "依次对比逆光、侧光和顶光，结尾放三版对照。", "x:2121286984295665875"],
+  ["tiktok", "2026-12-03", "A tiny stop-motion test", "Open with the finished loop, then show the three frames that sell the movement.", "instagram:DgJdXzslPVu"],
+  ["instagram", "2026-12-04", "Notes from a winter shoot", "Share the cover, close-ups, and color palette as a swipe-through post.", "instagram:DgG28zZF61U"],
+  ["x", "2026-12-05", "Five details worth keeping", "Share five crops from the final image and ask which one should become a full shot.", "x:2125063430629708113"],
+].map(([platform, date, title, copy, coverWork]) => {
+  const posts = allWorks.find((work) => work.work_id === coverWork)?.posts || [];
+  const cover = thumbnailUrl(posts.find((post) => post.platform === platform)?.thumbnail_url)
+    || posts.map((post) => thumbnailUrl(post.thumbnail_url)).find(Boolean);
+  return { platform, date, title, copy, cover, example: true };
+});
+
+const pendingList = document.getElementById("pending-list");
+const pendingStatus = document.getElementById("pending-status");
+const pendingPlatformTabs = document.getElementById("pending-platform-tabs");
+let pendingPlatformFilter = "";
+pendingPlatformTabs.innerHTML = [["", "全部平台"], ...Object.entries(PF)].map(([key, label]) =>
+  `<button type="button" data-platform="${key}" aria-pressed="${key === pendingPlatformFilter}">${label}</button>`).join("");
+
+const publicationDialog = document.getElementById("publication-dialog");
+const publicationForm = document.getElementById("publication-form");
+const publicationError = document.getElementById("publication-form-error");
+const publicationPlatform = document.getElementById("publication-platform");
+publicationPlatform.replaceChildren(...PKEYS.map((key) => new Option(PF[key], key)));
+
+/* ---------- 封面：本地上传图片 / 视频 ---------- */
+const COVER_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
+const COVER_VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+const COVER_IMAGE_EXT = /\.(jpe?g|png|webp|gif|avif)$/i;
+const COVER_VIDEO_EXT = /\.(mp4|mov|m4v|webm)$/i;
+const COVER_LIMITS = { image: 20 * 1024 * 1024, video: 200 * 1024 * 1024 };
+const coverInput = document.getElementById("publication-cover");
+const coverUpload = document.getElementById("publication-cover-upload");
+const coverEmpty = document.getElementById("publication-cover-empty");
+const coverMore = document.getElementById("publication-cover-more");
+const coverPreview = document.getElementById("publication-cover-preview");
+const coverMeta = document.getElementById("publication-cover-meta");
+const coverName = document.getElementById("publication-cover-name");
+const coverError = document.getElementById("publication-cover-error");
+const coverCache = new Map();
+const COVER_MAX_IMAGES = 9;
+// 一条记录可以带多张图；视频只允许 1 个
+let coverFiles = [];
+
+function coverKind(file) {
+  if (COVER_IMAGE_TYPES.has(file.type)) return "image";
+  if (COVER_VIDEO_TYPES.has(file.type)) return "video";
+  if (!file.type || file.type === "application/octet-stream") {
+    if (COVER_IMAGE_EXT.test(file.name)) return "image";
+    if (COVER_VIDEO_EXT.test(file.name)) return "video";
+  }
+  return "";
+}
+function setCoverError(message) {
+  coverError.textContent = message || "";
+  coverError.hidden = !message;
+}
+const coverSize = (bytes) => bytes >= 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1) + "MB"
+  : Math.max(1, Math.round(bytes / 1024)) + "KB";
+function clearCover() {
+  for (const item of coverFiles) URL.revokeObjectURL(item.url);
+  coverFiles = [];
+  coverInput.value = "";
+  renderCoverFiles();
+  setCoverError("");
+}
+function renderCoverFiles() {
+  const has = coverFiles.length > 0;
+  coverPreview.replaceChildren(...coverFiles.map((item, index) => {
+    const thumb = document.createElement("span");
+    thumb.className = "cover-thumb";
+    thumb.innerHTML = item.kind === "image"
+      ? `<img src="${esc(item.url)}" alt="">`
+      : `<video src="${esc(item.url)}" muted loop playsinline preload="metadata"></video><span class="cover-upload-badge">视频</span>`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "cover-thumb-remove";
+    remove.textContent = "×";
+    remove.title = "移除";
+    remove.setAttribute("aria-label", `移除 ${item.file.name}`);
+    remove.addEventListener("click", (event) => {
+      // 预览挂在 label 外面，这里再拦一层，避免点击穿透到文件选择
+      event.preventDefault();
+      event.stopPropagation();
+      URL.revokeObjectURL(item.url);
+      coverFiles.splice(index, 1);
+      setCoverError("");
+      renderCoverFiles();
+    });
+    thumb.append(remove);
+    return thumb;
+  }));
+  coverPreview.hidden = !has;
+  coverUpload.classList.toggle("has-files", has);
+  coverEmpty.hidden = has;
+  coverMore.hidden = !has;
+  coverMeta.hidden = !has;
+  coverName.textContent = has
+    ? `${coverFiles.length} 个文件 · ${coverSize(coverFiles.reduce((sum, item) => sum + item.file.size, 0))}`
+    : "";
+}
+coverInput.addEventListener("change", () => {
+  const picked = [...(coverInput.files || [])];
+  coverInput.value = "";
+  if (!picked.length) return;
+  const problems = [];
+  let images = coverFiles.filter((item) => item.kind === "image").length;
+  let videos = coverFiles.filter((item) => item.kind === "video").length;
+  for (const file of picked) {
+    const kind = coverKind(file);
+    if (!kind) { problems.push(`${file.name}：格式不支持`); continue; }
+    if (file.size > COVER_LIMITS[kind]) { problems.push(`${file.name}：${kind === "image" ? "图片超过 20MB" : "视频超过 200MB"}`); continue; }
+    if (kind === "image" ? videos : images) { problems.push("图片和视频别混在一条记录里"); continue; }
+    if (kind === "image" && images >= COVER_MAX_IMAGES) { problems.push(`图片最多 ${COVER_MAX_IMAGES} 张`); continue; }
+    if (kind === "video" && videos) { problems.push("视频只能传 1 个"); continue; }
+    // 同一批里重复选了同一个文件就跳过
+    if (coverFiles.some((item) => item.file.name === file.name && item.file.size === file.size
+      && item.file.lastModified === file.lastModified)) continue;
+    coverFiles.push({ file, kind, url: URL.createObjectURL(file) });
+    if (kind === "image") images += 1; else videos += 1;
+  }
+  setCoverError([...new Set(problems)].join("；"));
+  renderCoverFiles();
+});
+document.getElementById("publication-cover-remove").addEventListener("click", clearCover);
+
+function readAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+// 图片压到 1200px 以内再存本地存储；GIF 太小就原样保留动画
+// 一条记录放多张图时压到 1000px，免得几张就把 localStorage 塞满
+async function imageCoverData(file, maxSide = 1200) {
+  if (file.type === "image/gif" && file.size <= 1.5 * 1024 * 1024) return readAsDataUrl(file);
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    const webp = canvas.toDataURL("image/webp", 0.82);
+    return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return readAsDataUrl(file);
+  }
+}
+// 视频体积大，放进 IndexedDB，localStorage 里只留一个 id
+function coverDatabase() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("indexedDB unavailable")); return; }
+    const request = indexedDB.open("shotpoet-covers", 1);
+    request.onupgradeneeded = () => request.result.createObjectStore("files");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+async function putCoverFile(id, blob) {
+  const db = await coverDatabase();
+  try {
+    await new Promise((resolve, reject) => {
+      const transaction = db.transaction("files", "readwrite");
+      transaction.objectStore("files").put(blob, id);
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+async function getCoverFile(id) {
+  const db = await coverDatabase();
+  try {
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction("files", "readonly").objectStore("files").get(id);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+async function hydratePendingCovers(container) {
+  const slots = [...container.querySelectorAll(".pending-cover[data-cover-id]")];
+  if (!slots.length) return;
+  for (const slot of slots) {
+    const id = slot.dataset.coverId;
+    let url = coverCache.get(id);
+    if (!url) {
+      const blob = await getCoverFile(id).catch(() => null);
+      if (!blob) { slot.remove(); continue; }
+      url = URL.createObjectURL(blob);
+      coverCache.set(id, url);
+    }
+    slot.innerHTML = slot.dataset.coverType === "video" ? videoButton(url) : imageButton(url);
+  }
+  bindImagePreviews(container);
+}
+
+document.getElementById("publication-add").addEventListener("click", () => {
+  publicationForm.reset();
+  clearCover();
+  publicationCalendar.close();
+  publicationCalendar.refresh();
+  if (pendingPlatformFilter) publicationPlatform.value = pendingPlatformFilter;
+  publicationError.hidden = true;
+  publicationDialog.showModal();
+});
+document.getElementById("publication-cancel").addEventListener("click", () => publicationDialog.close());
+publicationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const fields = new FormData(publicationForm);
+  const title = String(fields.get("title") || "").trim();
+  const platform = fields.get("platform");
+  if (!title || !Object.hasOwn(PF, platform)) {
+    publicationError.textContent = !title ? "请填写作品标题" : "请选择平台";
+    publicationError.hidden = false;
+    return;
+  }
+  const entry = { title, platform, date: fields.get("date"), copy: String(fields.get("copy") || "").trim(), covers: [] };
+  if (coverFiles.length) {
+    const maxSide = coverFiles.length > 1 ? 1000 : 1200;
+    try {
+      for (const item of coverFiles) {
+        if (item.kind === "image") {
+          entry.covers.push({ type: "image", cover: await imageCoverData(item.file, maxSide) });
+        } else {
+          const id = `cover-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+          await putCoverFile(id, item.file);
+          entry.covers.push({ type: "video", coverId: id });
+        }
+      }
+    } catch {
+      setCoverError(coverFiles.some((item) => item.kind === "video")
+        ? "视频没能保存：请用本地服务（python3 preview.py）或线上地址打开看板后重试"
+        : "封面读取失败，换几张图片试试");
+      return;
+    }
+  }
+  try {
+    const entries = JSON.parse(localStorage.getItem(pendingStorageKey) || "[]");
+    entries.push(entry);
+    localStorage.setItem(pendingStorageKey, JSON.stringify(entries));
+  } catch {
+    publicationError.textContent = "当前浏览器无法保存发布记录，可能是存储空间不足";
+    publicationError.hidden = false;
+    return;
+  }
+  clearCover();
+  publicationDialog.close();
+  if (pendingPlatformFilter && pendingPlatformFilter !== platform) {
+    pendingPlatformTabs.querySelector(`[data-platform="${platform}"]`).click();
+  } else {
+    renderPending();
+  }
+  pendingStatus.textContent = "已保存到发布清单";
+});
+
+// 兼容旧记录：老版本一条只有一张封面，存在 cover 或 coverId 上
+function entryCovers(entry) {
+  if (Array.isArray(entry.covers) && entry.covers.length) return entry.covers;
+  if (entry.coverId) return [{ type: entry.coverType || "video", coverId: entry.coverId }];
+  const src = coverSource(entry.cover);
+  return src ? [{ type: entry.coverType === "video" ? "video" : "image", cover: src }] : [];
+}
+
+function readPendingEntries() {
+  const entries = JSON.parse(localStorage.getItem(pendingStorageKey) || "[]");
+  let changed = false;
+  for (const entry of entries) {
+    if (entry && !entry.id) {
+      entry.id = crypto.randomUUID();
+      changed = true;
+    }
+  }
+  if (changed) localStorage.setItem(pendingStorageKey, JSON.stringify(entries));
+  return entries;
+}
+
+pendingList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-delete-publication]");
+  if (!button) return;
+  const id = button.dataset.deletePublication;
+  if (!window.confirm("确定删除这条发布记录吗？")) return;
+  try {
+    if (id.startsWith("example:")) {
+      const hidden = JSON.parse(localStorage.getItem(pendingStorageKey + ".hidden-examples") || "[]");
+      localStorage.setItem(pendingStorageKey + ".hidden-examples", JSON.stringify([...new Set([...hidden, id])]));
+    } else {
+      const entries = readPendingEntries();
+      localStorage.setItem(pendingStorageKey, JSON.stringify(entries.filter((entry) => entry.id !== id)));
+    }
+    renderPending();
+    pendingStatus.textContent = "已删除发布记录";
+  } catch {
+    pendingStatus.textContent = "删除失败，请重试";
+  }
+});
+
+function renderPending() {
+  try {
+    const hidden = new Set(JSON.parse(localStorage.getItem(pendingStorageKey + ".hidden-examples") || "[]"));
+    const examples = publicationExamples.map((entry, index) => ({ ...entry, id: "example:" + index }));
+    const entries = [...readPendingEntries(), ...examples].filter((entry) => !hidden.has(entry?.id))
+      .filter((entry) => entry && Object.hasOwn(PF, entry.platform) &&
+        (!pendingPlatformFilter || entry.platform === pendingPlatformFilter))
+      .sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
+    pendingStatus.textContent = "";
+    pendingList.innerHTML = entries.map((entry) => {
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(entry.date) ? entry.date : "";
+      const title = entry.title?.trim() || "未命名作品";
+      const covers = entryCovers(entry);
+      const coverMarkup = covers.length ? `<div class="pending-covers">${covers.map((item) => item.coverId
+        ? `<span class="pending-cover" data-cover-id="${esc(item.coverId)}" data-cover-type="${esc(item.type || "video")}"></span>`
+        : item.type === "video" ? videoButton(item.cover) : imageButton(item.cover)).join("")}</div>` : "";
+      return `<article class="pending-entry">
+        <div class="pending-date">${date ? `<span>${date.slice(0, 4)}</span><strong>${date.slice(5).replace("-", "/")}</strong>` : "<span>未排期</span>"}</div>
+        <div class="pending-entry-body">
+          <div class="pending-entry-head"><h2 class="pending-entry-title">${esc(title)} ${entry.example ? '<span class="publication-example">示例</span>' : ""}</h2><div class="pending-platform-actions"><span class="pending-platform"><img src="${esc(platformIcon[PF[entry.platform]])}" alt="">${esc(PF[entry.platform])}</span><button type="button" class="publication-delete" data-delete-publication="${esc(entry.id)}" aria-label="删除${esc(title)}">删除</button></div></div>
+          ${entry.copy ? `<p class="pending-copy">${esc(entry.copy)}</p>` : ""}
+          ${coverMarkup}
+        </div>
+      </article>`;
+    }).join("") || '<p class="empty">暂无发布记录</p>';
+    bindImagePreviews(pendingList);
+    hydratePendingCovers(pendingList);
+  } catch {
+    pendingList.replaceChildren();
+    pendingStatus.textContent = "无法读取此浏览器的发布记录";
+  }
+}
+
+pendingPlatformTabs.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-platform]");
+  if (!button) return;
+  pendingPlatformFilter = button.dataset.platform;
+  for (const item of pendingPlatformTabs.querySelectorAll("button")) item.setAttribute("aria-pressed", String(item === button));
+  renderPending();
+});
+
+/* ---------- 切换视图 ---------- */
+const diagnosePickers = document.getElementById("diagnose-pickers");
+const pickPlatform = document.getElementById("pick-platform");
+const pick = document.getElementById("pick");
+const pickOptions = document.getElementById("pick-options");
+const diagnoseFrom = document.getElementById("diagnose-from");
+const diagnoseTo = document.getElementById("diagnose-to");
+const TITLES = { overview: "全平台总览", compare: "作品对比", diagnose: "", pending: "发布清单" };
+function route() {
+  const hashView = location.hash.slice(1).split("?")[0];
+  const view = Object.hasOwn(TITLES, hashView) ? hashView : "overview";
+  const hasWorks = D.works.length > 0;
+  const canShowView = hasWorks || ["overview", "compare", "pending"].includes(view);
+  mediaSelect.hidden = view === "pending";
+  document.querySelectorAll(".view").forEach((s) => s.hidden = s.id !== "v-" + view || !canShowView);
+  const emptyState = document.getElementById("media-empty");
+  emptyState.hidden = canShowView;
+  emptyState.textContent = `暂无${ACCOUNT_LABELS[accountType] || ""}${mediaName}作品数据`;
+  document.querySelectorAll(".side a.nav").forEach((a) => a.classList.toggle("on", a.dataset.view === view));
+  diagnosePickers.hidden = !hasWorks || view !== "diagnose";
+  if (diagnosePickers.hidden) {
+    pick.open = false;
+    diagnoseCalendar.close();
+  }
+  if (view !== "compare") compareCalendar.close();
+  if (view === "pending") {
+    document.getElementById("title").textContent = TITLES.pending;
+    document.getElementById("meta").textContent = "";
+  } else if (!hasWorks || view !== "diagnose") {
+    document.getElementById("title").textContent = mediaName + " · " + (TITLES[view] || "单条诊断");
+    document.getElementById("meta").textContent = `数据更新于 ${dt(D.generated_at)}`;
+  }
+  if (!canShowView) return;
+  ({ overview: renderOverview, compare: renderCompare, diagnose: renderDiagnose, pending: renderPending })[view]();
+  Object.values(charts).forEach((c) => c && c.resize());
+}
+function applyFilters() {
+  const params = new URLSearchParams(location.search);
+  mediaType = params.get("media") === "image" ? "image" : "video";
+  accountType = params.get("account") === "alt" ? "alt" : "official";
+  mediaName = mediaType === "image" ? "图文" : "视频";
+  setTab(mediaSelect, mediaType);
+  setTab(accountSelect, accountType);
+  followerHistory = followersFor(accountType);
+  document.body.classList.toggle("image-view", mediaType === "image");
+  D.works = allWorks.flatMap((work) => {
+    const filtered = work.posts.filter((post) =>
+      (post.account_type || "official") === accountType &&
+      Object.hasOwn(PF, post.platform) && post.media_type === mediaType);
+    return filtered.length ? [{ ...work, posts: filtered,
+      total_views: filtered.some((post) => post.latest.views != null)
+        ? filtered.reduce((total, post) => total + (post.latest.views ?? 0), 0) : null }] : [];
+  });
+  posts = D.works.flatMap((work) => work.posts.map((post) => ({ ...post, work })));
+  route();
+}
+bindTabs(mediaSelect, (value) => {
+  const url = new URL(location.href);
+  url.searchParams.set("media", value);
+  history.pushState(null, "", url);
+  applyFilters();
+});
+bindTabs(accountSelect, (value) => {
+  const url = new URL(location.href);
+  if (value === "official") url.searchParams.delete("account");
+  else url.searchParams.set("account", value);
+  history.pushState(null, "", url);
+  applyFilters();
+});
+function selectDiagnosis(platform, work) {
+  const params = new URLSearchParams();
+  if (work) params.set("work", work);
+  if (platform) params.set("platform", platform);
+  if (diagnoseFrom.value) params.set("from", diagnoseFrom.value);
+  if (diagnoseTo.value) params.set("to", diagnoseTo.value);
+  location.hash = params.size ? "diagnose?" + params : "diagnose";
+}
+function updateDiagnosisFilters() {
+  pick.open = false;
+  selectDiagnosis(pickPlatform.value, pick.dataset.work);
+}
+pickPlatform.addEventListener("change", updateDiagnosisFilters);
+
+function calendarDate(year, month, day) {
+  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+}
+
+function createCalendar(field, label, fromInput, toInput = null, onChange = () => {}) {
+  field.append(document.getElementById("range-calendar-template").content.cloneNode(true));
+  const calendar = field.querySelector(".calendar-picker");
+  const summary = calendar.querySelector("summary");
+  const grid = calendar.querySelector(".calendar-grid");
+  if (!toInput) {
+    calendar.querySelector(".calendar-popup").setAttribute("aria-label", "选择日期");
+    calendar.querySelector(".calendar-shortcuts").innerHTML =
+      '<button type="button" data-today>今天</button><button type="button" data-clear>清除</button>';
+  }
+  let monthStart;
+  let rangeStart = "";
+
+  function refresh() {
+    const from = fromInput.value;
+    const to = toInput?.value || "";
+    const value = !toInput ? (from || "选择日期") : from && to ? (from === to ? from : from + " 至 " + to)
+      : from ? from + " 起" : to ? "截至 " + to : "全部日期";
+    summary.querySelector(".calendar-value").textContent = value;
+    summary.setAttribute("aria-label", label + " " + value);
+  }
+
+  function drawMonth() {
+    const year = monthStart.getUTCFullYear();
+    const month = monthStart.getUTCMonth();
+    const today = compareDate.format(Date.now());
+    const from = rangeStart || fromInput.value;
+    const to = rangeStart ? "" : toInput?.value || "";
+    calendar.querySelector(".calendar-month").textContent = `${year} 年 ${month + 1} 月`;
+    const week = [..."一二三四五六日"].map((day) => `<span>${day}</span>`).join("");
+    const prefix = "<span></span>".repeat((monthStart.getUTCDay() + 6) % 7);
+    const count = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const days = Array.from({ length: count }, (_, index) => {
+      const day = index + 1;
+      const date = calendarDate(year, month, day);
+      const selected = date === from || date === to;
+      const inRange = from && to && date >= from && date <= to;
+      return `<button type="button" data-date="${date}" aria-label="${date}" aria-pressed="${selected}"${date === today ? ' aria-current="date"' : ""}${inRange ? ' class="calendar-range"' : ""}>${day}</button>`;
+    }).join("");
+    grid.innerHTML = week + prefix + days;
+  }
+
+  function apply(from, to) {
+    fromInput.value = from;
+    if (toInput) toInput.value = to;
+    calendar.open = false;
+    summary.focus();
+    refresh();
+    onChange();
+  }
+
+  calendar.addEventListener("toggle", () => {
+    if (!calendar.open) return;
+    rangeStart = "";
+    const [year, month] = (fromInput.value || toInput?.value || compareDate.format(Date.now())).split("-").map(Number);
+    monthStart = new Date(Date.UTC(year, month - 1, 1));
+    drawMonth();
+  });
+
+  calendar.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+    if (button.hasAttribute("data-clear")) {
+      apply("", "");
+    } else if (button.hasAttribute("data-today")) {
+      apply(compareDate.format(Date.now()));
+    } else if (button.dataset.monthStep) {
+      monthStart.setUTCMonth(monthStart.getUTCMonth() + Number(button.dataset.monthStep));
+      drawMonth();
+    } else if (button.dataset.days) {
+      const [year, month, day] = compareDate.format(Date.now()).split("-").map(Number);
+      apply(calendarDate(year, month - 1, day - Number(button.dataset.days) + 1), calendarDate(year, month - 1, day));
+    } else if (button.dataset.date) {
+      const date = button.dataset.date;
+      if (!toInput) {
+        apply(date);
+      } else if (rangeStart) {
+        apply(...[rangeStart, date].sort());
+      } else {
+        rangeStart = date;
+        drawMonth();
+        grid.querySelector(`[data-date="${date}"]`).focus();
+      }
+    }
+  });
+
+  calendar.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && calendar.open) {
+      calendar.open = false;
+      summary.focus();
+    }
+  });
+  document.addEventListener("click", (event) => {
+    if (calendar.open && !event.composedPath().includes(calendar)) calendar.open = false;
+  });
+  refresh();
+  return { refresh, close: () => { calendar.open = false; } };
+}
+
+const publicationCalendar = createCalendar(document.getElementById("publication-calendar-field"), "计划发布日期", document.getElementById("publication-date"));
+const diagnoseCalendar = createCalendar(document.getElementById("diagnose-calendar-field"), "发布时间",
+  diagnoseFrom, diagnoseTo, updateDiagnosisFilters);
+const compareCalendar = createCalendar(document.getElementById("compare-calendar-field"), "首发日期",
+  compareFrom, compareTo, renderCompare);
+
+pickOptions.addEventListener("click", (event) => {
+  const option = event.target.closest("button[data-work]");
+  if (!option) return;
+  pick.open = false;
+  pick.querySelector("summary").focus();
+  selectDiagnosis(pickPlatform.value, option.dataset.work);
+});
+pick.addEventListener("error", (event) => {
+  if (event.target.tagName === "IMG") event.target.hidden = true;
+}, true);
+pick.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && pick.open) {
+    pick.open = false;
+    pick.querySelector("summary").focus();
+  }
+});
+document.addEventListener("click", (event) => {
+  if (!pick.contains(event.target)) pick.open = false;
+});
+window.addEventListener("hashchange", route);
+window.addEventListener("popstate", () => {
+  const params = new URLSearchParams(location.search);
+  const nextMedia = params.get("media") === "image" ? "image" : "video";
+  const nextAccount = params.get("account") === "alt" ? "alt" : "official";
+  if (nextMedia !== mediaType || nextAccount !== accountType) applyFilters();
+});
+window.addEventListener("resize", () => Object.values(charts).forEach((c) => c && c.resize()));
+applyFilters();
+</script>
+</body>
+</html>

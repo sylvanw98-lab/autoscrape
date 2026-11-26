@@ -1,0 +1,17 @@
+<style>
+#collection-settings{color:#172b27;border:1px solid #cbd8ce;border-radius:14px;width:min(580px,calc(100vw - 28px));max-height:calc(100dvh - 32px);padding:24px;overflow:auto;font:15px Inter,"Microsoft YaHei",sans-serif}#collection-settings::backdrop{background:#10251ebd}#collection-settings h2{font-size:1.3rem;margin:0}#collection-settings .collection-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}#collection-settings p{line-height:1.6}#collection-settings label{display:flex;align-items:center;gap:10px;margin:16px 0;color:#172b27}#collection-settings input[type=checkbox]{min-height:0;width:18px;height:18px}#collection-settings input[type=number]{width:110px}#collection-settings .collection-presets,#collection-settings .collection-actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}#collection-settings .collection-presets button{font-size:.85rem;min-height:32px;padding:5px 10px}#collection-settings button:disabled{opacity:.5;cursor:not-allowed}#collection-save{background:#17694f;color:#fff}#collection-settings dl{display:grid;grid-template-columns:100px 1fr;gap:10px;margin:20px 0;padding:16px;background:#f4f6f2;border-radius:9px;font-size:.9rem}#collection-settings dt{color:#51665f}#collection-settings dd{margin:0;overflow-wrap:anywhere}#collection-message{white-space:pre-line;color:#51665f}#collection-results{padding-left:20px;font-size:.9rem;line-height:1.7}#collection-settings .collection-help{color:#51665f;font-size:.875rem}#collection-settings .collection-notice{padding:12px;background:#e7efe8;border-radius:8px}
+</style>
+<dialog id="collection-settings" aria-labelledby="collection-title">
+<div class="collection-heading"><h2 id="collection-title">自动采集设置</h2><button type="button" id="collection-close">关闭</button></div>
+<p class="collection-help">固定脚本采集 X、Instagram 和 TikTok，不调用 AI 模型。请保持电脑、采集服务和浏览器运行，并保持账号登录。</p>
+<form id="collection-form">
+<label><input id="collection-enabled" type="checkbox">开启自动采集</label>
+<label for="collection-interval">采集间隔<input id="collection-interval" type="number" min="15" max="10080" step="1" required>分钟</label>
+<div class="collection-presets"><button type="button" data-interval="60">每小时</button><button type="button" data-interval="180">每 3 小时</button><button type="button" data-interval="360">每 6 小时</button><button type="button" data-interval="1440">每天</button></div>
+<p class="collection-help">支持 15 分钟至 7 天。暂停后当前一轮仍会完成；电脑休眠期间不采集，唤醒后最多补采一轮。</p>
+<div class="collection-actions"><button id="collection-save" type="submit">保存设置</button><button id="collection-run" type="button">立即采集一次</button></div>
+</form>
+<dl><dt>当前状态</dt><dd id="collection-state">正在读取…</dd><dt>上次开始</dt><dd id="collection-last">—</dd><dt>上次成功</dt><dd id="collection-success">—</dd><dt>下次采集</dt><dd id="collection-next">—</dd></dl>
+<p id="collection-message" role="status" aria-live="polite"></p><ul id="collection-results"></ul>
+<p class="collection-help collection-notice" id="collection-readonly" hidden>局域网页面仅供查看。请在这台电脑的本机地址打开设置以修改计划。</p>
+</dialog>

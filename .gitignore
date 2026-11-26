@@ -1,0 +1,10 @@
+.DS_Store
+**/data/
+**/outputs/
+**/node_modules/
+**/__pycache__/
+**/config.env
+**/.upload_key
+**/.workbuddy/
+**/.wrangler/
+**/dashboard/data.js

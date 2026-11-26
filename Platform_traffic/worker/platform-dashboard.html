@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>社媒发布数据看板</title>
+<style>
+:root{font-family:Inter,"Microsoft YaHei",sans-serif;color:#172b27;background:#f4f6f2;--line:#e0e7df;--muted:#51665f;--green:#17694f}*{box-sizing:border-box}body{margin:0}header{background:#12332a;color:white;padding:24px max(24px,calc((100vw - 1200px)/2));display:flex;align-items:center;gap:12px;font-weight:700}.logo{width:23px;height:23px;display:inline-flex;align-items:end;gap:3px}.logo i{width:5px;background:#a8edc7;border-radius:2px}.logo i:nth-child(1){height:8px}.logo i:nth-child(2){height:14px}.logo i:nth-child(3){height:22px}main{max-width:1248px;margin:auto;padding:36px 24px 60px}.intro{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap}h1{font-size:clamp(2rem,5vw,3rem);letter-spacing:-.05em;margin:0 0 9px}h2{font-size:1.25rem;margin:0}.sub,.note{color:var(--muted);margin:0;font-size:.9rem}.status{margin:18px 0;background:#e7efe8;color:#254a3c;padding:12px 16px;border-radius:8px;font-size:.9rem}label{display:grid;gap:6px;font-size:.875rem;color:var(--muted)}select,input,button{font:inherit;border:1px solid #cbd8ce;border-radius:8px;background:white;color:#18342b;padding:9px 11px;min-height:40px}button{cursor:pointer}button:hover,button:focus-visible{border-color:var(--green)}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card,.panel{background:#fff;border:1px solid var(--line);border-radius:13px}.card{padding:18px 20px}.card strong{display:block;font-variant-numeric:tabular-nums;font-size:clamp(1.3rem,4vw,2.4rem);letter-spacing:-.04em;margin:8px 0;overflow-wrap:anywhere}.panel{padding:20px;margin-top:18px}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.switch{display:flex;gap:4px;background:#edf2ed;padding:4px;border-radius:9px}.switch button{border:0;background:transparent;min-height:34px;padding:5px 13px}.switch button[aria-pressed=true]{background:#17694f;color:white}.chart{height:235px;width:100%;display:block;margin-top:12px}.chart text{fill:#51665f;font:12px system-ui}.chart .grid{stroke:#e1e9e2;stroke-width:1}.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}.legend button[aria-pressed=true]{background:#e6f4eb;border-color:#589977}.table-wrap{overflow:auto;margin-top:10px}table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:.9rem}th,td{text-align:left;padding:13px 10px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}a{color:var(--green);text-underline-offset:3px}td:first-child{min-width:180px;max-width:360px;white-space:normal}.empty{padding:30px 10px;color:var(--muted);text-align:center}.num{font-variant-numeric:tabular-nums}details{margin-top:14px}summary{cursor:pointer;color:var(--green);font-size:.9rem}@media(max-width:600px){main{padding:23px 13px 35px}.card,.panel{padding:12px}.cards{gap:6px}.card .note{font-size:.75rem}.switch button{padding:5px 9px}}
+.platform-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:24px 0 0;border-bottom:1px solid var(--line);padding-bottom:8px}.platform-tabs button{background:transparent;border-color:transparent;font-weight:600;padding:8px 16px}.platform-tabs button[aria-pressed=true]{color:white;background:var(--green)}.cards.two{grid-template-columns:repeat(2,minmax(0,1fr))}.cards.four{grid-template-columns:repeat(4,minmax(0,1fr))}@media(max-width:700px){.cards.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.post-link{border:0;padding:0;min-height:0;background:transparent;color:var(--green);text-align:left;text-decoration:underline;text-underline-offset:3px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+
+.trend-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:14px 0 8px}.post-picker{position:relative;margin:0;flex:0 1 205px;max-width:100%}.post-picker summary{border:1px solid #cbd8ce;border-radius:8px;padding:9px 11px;min-height:40px}.post-picker-options{position:absolute;z-index:2;top:100%;left:0;min-width:min(450px,80vw);max-height:240px;overflow:auto;background:white;border:1px solid #cbd8ce;border-radius:8px;padding:6px;box-shadow:0 8px 20px #172b2714}.post-picker-options label{display:flex;align-items:center;gap:8px;padding:6px}.post-picker-options input{min-height:0;flex:none}.post-picker-options span{overflow-wrap:anywhere}
+
+.date-range{position:relative;flex:0 1 345px;min-width:min(100%,290px);margin:0}.date-range summary{border:1px solid #cbd8ce;border-radius:8px;padding:9px 11px;min-height:40px}.date-range-fields{position:absolute;z-index:2;top:100%;right:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:min(335px,calc(100vw - 56px));padding:12px;background:#fff;border:1px solid #cbd8ce;border-radius:8px;box-shadow:0 8px 20px #172b2414}.date-range-fields input{min-width:0;width:100%}@media(max-width:600px){.date-range{flex:1 1 100%}.date-range-fields{left:0;right:auto}}
+
+.interaction-charts{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}.interaction-chart{min-width:0;border:1px solid var(--line);border-radius:10px;padding:14px}.interaction-chart h3{font-size:1rem;margin:0 0 6px;overflow-wrap:anywhere}.interaction-chart .chart{height:auto;min-height:145px;margin-top:8px}
+.comparison-series{display:flex;flex-direction:column;gap:6px;padding:0;margin:6px 0;list-style:none}.comparison-series li{border-left:4px solid;padding-left:7px;overflow-wrap:anywhere}
+.publication-time{color:#6b7280}
+.trend-mode{display:inline-flex;margin-top:12px}
+.metric-series:not(.post-comparison){flex-direction:row;flex-wrap:wrap;gap:6px 16px}.metric-series li{display:inline-flex;align-items:center;gap:6px;border-left:0;padding-left:0}.metric-series i{width:9px;height:9px;border-radius:50%;flex:none}
+.post-thumbnail{width:48px;height:48px;flex:none;object-fit:cover;border-radius:5px}
+.post-chart-heading{display:flex;align-items:center;gap:10px}.post-chart-heading>div{min-width:0}
+.media-tabs{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:16px 0}.media-tabs p{margin:0}
+.thumbnail-button{display:inline-flex;align-items:center;justify-content:center;flex:none;padding:0;min-height:0;border:0;background:transparent;border-radius:5px;cursor:zoom-in}.thumbnail-button:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+.post-original{font-size:.9rem;font-weight:400;overflow-wrap:anywhere;word-break:break-word}.post-chart-heading h3{margin-bottom:6px}.post-detail{display:flex;align-items:center;gap:10px;min-width:230px}
+.image-preview{width:min(1000px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:16px;border:1px solid var(--line);border-radius:13px;background:#fff;color:#172b27}.image-preview::backdrop{background:#10251ed9}.preview-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.preview-header h2{font-size:1.1rem}.preview-image{display:block;width:100%;height:auto;max-height:calc(100dvh - 190px);object-fit:contain;background:#f4f6f2;border-radius:6px}.preview-image[hidden]{display:none}.preview-link{display:block;margin-top:12px}.preview-error{padding:40px 16px;text-align:center;color:var(--muted)}
+</style></head>
+<body><header><span class="logo" aria-hidden="true"><i></i><i></i><i></i></span>社媒数据</header>
+<main>
+<div class="intro"><div><h1>发布数据看板</h1><p class="sub">平台账号 · 北京时间</p></div><div class="intro-actions"><p class="note" id="last"></p><button type="button" data-open-collection>自动采集设置</button><button type="button" id="refresh">刷新</button></div></div>
+<div id="status" class="status" role="status">正在读取数据……</div>
+<nav id="platform-tabs" class="platform-tabs" aria-label="按平台查看"></nav>
+<div class="media-tabs"><div id="media-tabs" class="switch" role="group" aria-label="内容类型"></div><p id="media-note" class="note"></p></div>
+<div class="cards" id="cards"></div>
+<section class="panel"><div class="panel-head"><h2>互动趋势</h2><div class="switch" id="periods" aria-label="时间粒度"></div></div>
+<div id="trend-mode" class="switch trend-mode" aria-label="互动趋势展示方式"></div>
+<form id="trend-filters" class="trend-filters" aria-label="互动趋势筛选">
+<details id="post-picker" class="post-picker"><summary id="post-selection">帖子名称 · 最近 3 条</summary><div id="post-options" class="post-picker-options"></div></details>
+<details id="date-range" class="date-range">
+<summary id="date-selection">发布日期 · 全部</summary>
+<div class="date-range-fields"><label>开始日期<input type="date" id="published-from"></label><label>结束日期<input type="date" id="published-to"></label></div>
+</details>
+<button type="submit">筛选</button><button type="reset">清除</button>
+</form>
+<p id="trend-filter-status" class="note" role="status"></p>
+<div id="legend" class="legend" aria-label="趋势指标"></div>
+<div id="plot" class="interaction-charts" aria-label="总体和单帖互动趋势"></div>
+</section><section class="panel"><div class="panel-head"><h2>帖子明细</h2><p class="note" id="post-count"></p></div>
+<div class="table-wrap"><table><thead><tr><th>帖子</th><th>平台</th><th>发布时间</th><th id="post-views-column">浏览量 / 曝光量</th><th>点赞量</th><th>评论数</th><th id="post-saves-column" hidden>TikTok 收藏数</th><th>数据来源</th><th>最近采集</th></tr></thead><tbody id="posts"></tbody></table></div>
+</section>
+<dialog id="image-preview" class="image-preview" aria-labelledby="preview-title"><div class="preview-header"><h2 id="preview-title">图片预览</h2><button id="preview-close" type="button" autofocus>关闭</button></div><img id="preview-image" class="preview-image" alt="帖子图片预览" referrerpolicy="no-referrer"><p id="preview-error" class="preview-error" hidden>图片暂时无法加载，请打开原帖查看。</p><a id="preview-link" class="preview-link post-original" target="_blank" rel="noopener noreferrer">打开原帖</a></dialog>
+</main>
+<script>
+const $ = id => view.querySelector('#'+id);
+const selectedPosts=new Set();
+let useRecentPosts=true;
+const labels = { impressions:'浏览量 / 曝光量',likes:'点赞量',comments:'评论数' };
+const platforms = {'':'全部',X:'X',Instagram:'Instagram',TikTok:'TikTok'};
+const mediaTypes = {'':'全部',image:'图片',video:'视频'};
+let mediaType='';
+const periods = {hour:'小时',day:'日',month:'月',year:'年'};
+const fmt = new Intl.NumberFormat('zh-CN');
+const dateTimeOptions = {timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'};
+const local = new Intl.DateTimeFormat('zh-CN',dateTimeOptions);
+const localWithSeconds = new Intl.DateTimeFormat('zh-CN',{...dateTimeOptions,second:'2-digit'});
+const format = number => number == null ? '暂无数据' : fmt.format(number);
+const time = (value,formatter=local) => value ? formatter.format(value) : '暂无记录';
+const trendModes={all:'全部',single:'单个'};
+let trendMode='all';
+const singleMetrics=new Set(['impressions','likes','comments']);
+const metricColors={impressions:'#17694f',likes:'#a44075',comments:'#365dab',saves:'#9b5425'};
+let unit = 'day', metric = platform==='Instagram'?'likes':'impressions', data, requestId = 0;
+
+function visibleMetrics() {
+  if(platform==='Instagram')return {likes:labels.likes,comments:labels.comments};
+  const names = {...labels};
+  if (platform && (platform !== 'X' || data?.modes?.X === 'web')) names.impressions = '浏览量';
+  if (platform === 'TikTok') names.saves = '收藏数';
+  return names;
+}
+
+function element(name, text, className) {
+  const node=document.createElement(name);
+  if(text!=null) node.textContent=text;
+  if(className) node.className=className;
+  return node;
+}
+function rows(target, values, columns, empty) {
+  target.replaceChildren();
+  if (!values.length) {
+    const cell=target.insertRow().insertCell(); cell.colSpan=columns;cell.className='empty';cell.textContent=empty;
+    return;
+  }
+  for(const cells of values) {
+    const row=target.insertRow();
+    for(const value of cells) {
+      const cell=row.insertCell();
+      if(value instanceof Node) cell.append(value); else cell.textContent=value;
+    }
+  }
+}
+function switches(target, choices, selected, apply) {
+  target.replaceChildren();
+  for(const [key,label] of Object.entries(choices)) {
+    const button=element('button',label);button.type='button';button.setAttribute('aria-pressed',key===selected);
+    button.onclick=()=>apply(key);target.append(button);
+  }
+}
+const seriesColors=['#17694f','#a44075','#365dab','#9b5425','#6854a9','#167282','#9b353d','#536623'];
+function trendPeriod(value) {
+  const label=time(value);
+  if(unit==='hour')return label.slice(-5);
+  if(unit==='day')return label.slice(5,10).replace('/','-');
+  if(unit==='month')return label.slice(0,7);
+  return label.slice(0,4);
+}
+function originalLink(url) {
+  const link=element('a',url,'post-original');
+  const parsed=new URL(url);
+  if(parsed.protocol==='https:'||parsed.protocol==='http:')link.href=parsed.href;
+  link.target='_blank';
+  link.rel='noopener noreferrer';
+  return link;
+}
+function previewImage(url,postUrl) {
+  const dialog=$('image-preview'),image=$('preview-image');
+  $('preview-error').hidden=true;
+  image.hidden=false;
+  image.onerror=()=>{image.hidden=true;$('preview-error').hidden=false;};
+  image.src=url;
+  const link=originalLink(postUrl);
+  $('preview-link').href=link.href;
+  $('preview-link').textContent=postUrl;
+  dialog.showModal();
+}
+function appendPostThumbnail(target,url,postUrl) {
+  if(!url)return;
+  const button=element('button',null,'thumbnail-button');
+  button.type='button';
+  button.setAttribute('aria-label','放大预览图片');
+  button.title='放大预览图片';
+  const image=element('img',null,'post-thumbnail');
+  image.alt='';
+  image.loading='lazy';
+  image.referrerPolicy='no-referrer';
+  image.onerror=()=>button.remove();
+  image.src=url;
+  button.onclick=()=>previewImage(url,postUrl);
+  button.append(image);
+  target.append(button);
+}
+function interactionChart(title,series,trend,metricName,max,compare=false) {
+  const card=element('article',null,'interaction-chart');
+  const heading=element('h3',title);
+  heading.title=title;
+  if(compare){
+    card.append(heading);
+  }else{
+    const {publishedAt,thumbnailUrl,url}=series[0];
+    heading.replaceChildren(originalLink(url));
+    const header=element('div',null,'post-chart-heading');
+    const text=element('div');
+    text.append(heading,element('p','发布时间：'+time(publishedAt,localWithSeconds),'note publication-time'));
+    appendPostThumbnail(header,thumbnailUrl,url);
+    header.append(text);
+    card.append(header);
+  }
+  if((compare||series.length>1) && series.length){
+    const legend=element('ul',null,'comparison-series metric-series note');
+    if(compare)legend.classList.add('post-comparison');
+    for(const post of series){
+      const item=element('li');
+      const dot=element('i');
+      dot.style.backgroundColor=post.color;
+      dot.setAttribute('aria-hidden','true');
+      item.append(dot);
+      if(compare)appendPostThumbnail(item,post.thumbnailUrl,post.url);
+      item.append(compare?originalLink(post.url):element('span',post.title));
+      legend.append(item);
+    }
+    card.append(legend);
+  }
+  if(!series.some(post=>post.points.length)){
+    card.append(element('p','暂无此指标的采集数据','empty'));
+    return card;
+  }
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg');
+  const width=Math.max(300,($('plot').clientWidth||880)-30);
+  const left=46,right=width-26;
+  svg.setAttribute('viewBox','0 0 '+width+' 182');
+  svg.setAttribute('class','chart');
+  svg.setAttribute('role','img');
+  svg.setAttribute('aria-label',title+' · '+metricName+'趋势');
+  const y=value=>15+(max-value)*125/max;
+  const x=index=>left+(index+.5)*(right-left)/Math.max(trend.length,1);
+  function svgEl(tag,attrs,text,owner=svg) {
+    const item=document.createElementNS(ns,tag);
+    for(const [key,value] of Object.entries(attrs))item.setAttribute(key,value);
+    if(text!=null)item.textContent=text;
+    owner.append(item);
+    return item;
+  }
+  for(const value of new Set(Array.from({length:5},(_,i)=>Math.round(max*i/4)))){
+    svgEl('line',{x1:left,x2:right,y1:y(value),y2:y(value),class:'grid'});
+    svgEl('text',{x:left-6,y:y(value)+4,'text-anchor':'end'},fmt.format(value));
+  }
+  for(const {points,color} of series){
+    let previous;
+    for(const point of points){
+      if(previous){
+        const line={x1:x(previous.index),x2:x(point.index),y1:y(previous.value),y2:y(point.value),stroke:color,'stroke-width':2};
+        if(point.index-previous.index>1)line['stroke-dasharray']='4 4';
+        svgEl('line',line);
+      }
+      svgEl('circle',{cx:x(point.index),cy:y(point.value),r:4,fill:color,stroke:'#fff','stroke-width':1});
+      previous=point;
+    }
+  }
+  const marks=Math.min(trend.length,12,Math.max(2,Math.floor((right-left)/65)+1));
+  for(let i=0;i<marks;i++){
+    const index=Math.round(i*(trend.length-1)/Math.max(marks-1,1));
+    svgEl('text',{x:x(index),y:163,'text-anchor':i===0?'start':i===marks-1?'end':'middle'},trendPeriod(trend[index].start));
+  }
+  const targets=svgEl('g',{});
+  const tooltip=svgEl('g',{visibility:'hidden','pointer-events':'none','aria-hidden':'true'});
+  const background=svgEl('rect',{height:24,rx:4,fill:'#fff',stroke:'#cbd8ce'},null,tooltip);
+  const tooltipText=svgEl('text',{x:8,y:16},null,tooltip);
+  for(const point of series.flatMap(line=>line.points.map(point=>({...point,label:line.metricName||metricName})))){
+    const cx=x(point.index),cy=y(point.value);
+    const label=point.label+'：'+format(point.value);
+    const hit=svgEl('circle',{cx,cy,r:10,fill:'transparent','aria-label':label},null,targets);
+    hit.addEventListener('pointerenter',()=>{
+      tooltipText.textContent=label;
+      const boxWidth=Math.ceil(tooltipText.getComputedTextLength())+16;
+      const boxX=Math.max(0,Math.min(width-boxWidth,cx-boxWidth/2));
+      const boxY=cy<36 ? cy+11 : cy-35;
+      background.setAttribute('width',boxWidth);
+      tooltip.setAttribute('transform',`translate(${boxX} ${boxY})`);
+      tooltip.setAttribute('visibility','visible');
+    });
+    hit.addEventListener('pointerleave',()=>tooltip.setAttribute('visibility','hidden'));
+  }
+  card.append(svg);
+  return card;
+}
+
+function draw() {
+  const names=visibleMetrics();
+  switches($('trend-mode'),trendModes,trendMode,key=>{trendMode=key;draw();});
+  if(trendMode==='all'){
+    switches($('legend'),names,metric,key=>{metric=key;draw();});
+  }else{
+    $('legend').replaceChildren();
+    for(const [key,label] of Object.entries(names)){
+      const button=element('button',label);
+      button.type='button';
+      button.setAttribute('aria-pressed',singleMetrics.has(key));
+      button.onclick=()=>{
+        if(singleMetrics.has(key))singleMetrics.delete(key);
+        else singleMetrics.add(key);
+        draw();
+        [...$('legend').children].find(item=>item.textContent===label)?.focus();
+      };
+      $('legend').append(button);
+    }
+  }
+  const activeMetrics=trendMode==='all'?[metric]:Object.keys(names).filter(key=>singleMetrics.has(key));
+  if(!activeMetrics.length){
+    $('plot').replaceChildren(element('p','请选择要显示的指标','empty'));
+    return;
+  }
+  const trend=data?.trend||[];
+  const series=new Map();
+  const selected=new Set(data?.trendPostIds||[]);
+  for(const post of data?.posts||[]){
+    if(!selected.has(post.id))continue;
+    const title=postName(post),publishedAt=post.published_at;
+    series.set(post.id,{title,lines:new Map(activeMetrics.map(key=>[key,{
+      title:trendMode==='all'?title:names[key],url:post.url,publishedAt,metricName:names[key],thumbnailUrl:post.thumbnail_url,
+      color:trendMode==='all'?seriesColors[series.size%seriesColors.length]:metricColors[key],points:[],
+    }]))});
+  }
+  let postMax=1;
+  for(const [index,period] of trend.entries()){
+    for(const item of period.readings){
+      const post=series.get(item.id);
+      if(!post)continue;
+      for(const [key,line] of post.lines){
+        if(item[key]==null)continue;
+        line.points.push({index,value:item[key]});
+        postMax=Math.max(postMax,item[key]);
+      }
+    }
+  }
+  const metricName=names[metric];
+  const matched=[...series.values()];
+  if(!data?.posts?.length){
+    $('plot').replaceChildren(element('p',mediaType==='video'?'暂无视频帖子，发布并采集后将在这里显示视频流量':mediaType==='image'?'暂无图片帖子':'暂无符合筛选条件的帖子','empty'));
+    return;
+  }
+  const title=data?.trendRecentOnly&&matched.length?'近 '+matched.length+' 条数据':'帖子对比';
+  const charts=trendMode==='all'
+    ? [interactionChart(title,matched.map(post=>post.lines.get(metric)),trend,metricName,postMax,true)]
+    : matched.map(post=>interactionChart(post.title,[...post.lines.values()],trend,
+      activeMetrics.map(key=>names[key]).join('、'),postMax));
+  $('plot').replaceChildren(...(charts.length?charts:[element('p','暂无符合筛选条件的帖子','empty')]));
+}
+function postName(post) {
+  const title=post.title?.trim();
+  if(title) return title;
+  const [handle, resource]=new URL(post.url).pathname.split('/').filter(Boolean);
+  if(handle && (post.platform==='TikTok' && handle.startsWith('@') || post.platform==='Instagram' && !resource)){
+    return handle.startsWith('@')?handle:'@'+handle;
+  }
+  return post.account?.trim()||post.platform;
+}
+
+function updatePostSelection() {
+  $('post-selection').textContent=selectedPosts.size?'帖子名称 · 已选 '+selectedPosts.size+' 条':useRecentPosts?'帖子名称 · 最近 3 条':'帖子名称 · 未选择';
+}
+function publishRange() {
+  const from=$('published-from').value;
+  const to=$('published-to').value;
+  if(Boolean(from)!==Boolean(to))throw new Error('请选择发布日期的开始和结束日期');
+  if(from&&from>to)throw new Error('发布日期的开始日期须早于或等于结束日期');
+  return {from,to};
+}
+function updateDateSelection() {
+  const from=$('published-from').value;
+  const to=$('published-to').value;
+  $('date-selection').textContent=from&&to?'发布日期 · '+from+' 至 '+to:from||to?'发布日期 · 待选完整':'发布日期 · 全部';
+}
+function renderPostOptions(posts) {
+  const list=$('post-options');
+  list.replaceChildren();
+  for(const post of posts){
+    const label=element('label');
+    const checkbox=element('input');
+    checkbox.type='checkbox';
+    checkbox.value=post.id;
+    checkbox.checked=selectedPosts.has(post.id);
+    checkbox.onchange=()=>{
+      useRecentPosts=false;
+      if(checkbox.checked)selectedPosts.add(post.id);
+      else selectedPosts.delete(post.id);
+      updatePostSelection();
+    };
+    label.append(checkbox,element('span',postName(post)));
+    list.append(label);
+  }
+  if(!posts.length)list.append(element('p','暂无可选帖子','note'));
+  updatePostSelection();
+}
+function render() {
+  const {posts,run}=data;
+  renderPostOptions(posts);
+  $('trend-filter-status').textContent='趋势包含 '+data.trendPostCount+' 条帖子';
+  const status=run?[run.syncIssue,run.collectionIssue].filter(Boolean):data.accountFeedAt?[]:['等待首次采集'];
+  const webPlatforms=[...new Set(data.options.map(item=>item.platform))].filter(item=>(!platform||item===platform)&&data.modes?.[item]==='web');
+  if(webPlatforms.length)status.unshift(webPlatforms.join('、')+' 使用网页采集');
+  if(run?.retryAt)status.push('可重试时间 '+time(run.retryAt));
+  $('status').textContent=status.join(' · ')||'最近一轮采集已完成';
+  $('last').textContent=data.accountFeedAt?'最近采集 '+time(data.accountFeedAt):'';
+  $('post-count').textContent='共 '+posts.length+' 条';
+  const unknown=posts.filter(post=>post.media_type==='unknown').length;
+  $('media-note').textContent=unknown?unknown+' 条帖子类型待确认，仅计入全部':mediaType?mediaTypes[mediaType]+'帖子的独立统计':'图片与视频合并统计';
+  const metrics=visibleMetrics();
+  const keys=Object.keys(metrics);
+  $('cards').classList.toggle('two',keys.length===2);
+  $('cards').classList.toggle('four',keys.length===4);
+  $('cards').replaceChildren(...Object.entries(metrics).map(([key,label])=>{
+    const values=posts.map(post=>post[key]).filter(value=>value!=null);
+    const card=element('article',null,'card');
+    card.append(element('span',label,'sub'),element('strong',format(values.length?values.reduce((a,b)=>a+b,0):posts.length?null:0)),element('p','累计值 · '+values.length+'/'+posts.length+' 条有数据','note'));
+    return card;
+  }));
+  $('post-saves-column').hidden=!Object.hasOwn(metrics,'saves');
+  $('post-views-column').hidden=!Object.hasOwn(metrics,'impressions');
+  rows($('posts'),posts.map(post=>{
+    const detail=element('div',null,'post-detail');
+    appendPostThumbnail(detail,post.thumbnail_url,post.url);
+    detail.append(originalLink(post.url));
+    return [detail,post.platform,time(post.published_at,localWithSeconds),
+      ...keys.map(key=>format(post[key])),
+      post.source === 'web' ? '网页' : post.source === 'api' ? '接口' : '—',time(post.captured_at)];
+  }),5+keys.length,mediaType==='video'?'暂无视频帖子':mediaType==='image'?'暂无图片帖子':'暂无符合筛选条件的帖子');
+  draw();
+}
+async function load() {
+  const id=++requestId;
+  switches($('platform-tabs'),platforms,platform,choosePlatform);
+  switches($('media-tabs'),mediaTypes,mediaType,key=>{
+    mediaType=key;
+    selectedPosts.clear();
+    useRecentPosts=true;
+    load();
+  });
+  switches($('periods'),periods,unit,key=>{unit=key;load();});
+  $('status').textContent='正在读取数据……';
+  try {
+    const query=new URLSearchParams({unit});
+    if(platform) query.set('platform',platform);
+    if(mediaType) query.set('mediaType',mediaType);
+    const {from:publishedFrom,to:publishedTo}=publishRange();
+    const requestedRecent=useRecentPosts;
+    query.set('postSelection',requestedRecent?'recent':'manual');
+    if(!requestedRecent)for(const post of selectedPosts)query.append('post',post);
+    if(publishedFrom)query.set('publishedFrom',publishedFrom);
+    if(publishedTo)query.set('publishedTo',publishedTo);
+    const response=await fetch('/api/dashboard?'+query);const result=await response.json();
+    if(id!==requestId)return;
+    if(!response.ok)throw new Error(result.error||'读取失败');
+    if(requestedRecent&&useRecentPosts){
+      selectedPosts.clear();
+      for(const id of result.trendPostIds)selectedPosts.add(id);
+    }
+    data=result;render();
+  } catch(error) {if(id===requestId)$('status').textContent=error.message;}
+}
+$('trend-filters').onsubmit=event=>{
+  event.preventDefault();
+  try { publishRange(); }
+  catch(error) {
+    $('trend-filter-status').textContent=error.message;
+    $('date-range').open=true;
+    ($('published-from').value?$('published-to'):$('published-from')).focus();
+    return;
+  }
+  $('post-picker').open=false;
+  $('date-range').open=false;
+  load();
+};
+for(const id of ['published-from','published-to']) $(id).oninput=updateDateSelection;
+$('post-picker').ontoggle=()=>{if($('post-picker').open)$('date-range').open=false;};
+$('date-range').ontoggle=()=>{if($('date-range').open)$('post-picker').open=false;};
+view.addEventListener('click',event=>{
+  for(const id of ['post-picker','date-range']){
+    const panel=$(id);
+    if(panel.open&&!panel.contains(event.target))panel.open=false;
+  }
+});
+$('trend-filters').onreset=()=>{
+  useRecentPosts=true;
+  selectedPosts.clear();
+  $('post-picker').open=false;
+  $('date-range').open=false;
+  setTimeout(()=>{updateDateSelection();load();},0);
+};
+$('refresh').onclick=load;
+$('preview-close').onclick=()=>$('image-preview').close();
+$('image-preview').addEventListener('click',event=>{
+  if(event.target!==$('image-preview'))return;
+  const rect=event.target.getBoundingClientRect();
+  if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)event.target.close();
+});
+$('image-preview').addEventListener('close',()=>{
+  $('preview-image').removeAttribute('src');
+  $('preview-image').onerror=null;
+});
+draw();load();
+return draw;
+</script></body></html>
