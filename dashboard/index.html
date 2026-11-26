@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
 <style>
-/* 设计规范见 docs/design.md：飞书式浅灰背景、白色卡片、蓝色交互 */
+/* 设计规范见 docs/design.md：白底、浅灰卡片套白色面板、墨绿胶囊导航 */
 :root {
   color-scheme: light;
   --bg: #ffffff; --card: #f4f5f3; --inner: #ffffff; --line: #e8eae6;  --fg: #131713; --muted: #4f564f; --dim: #8a908a;
@@ -412,41 +412,6 @@ td.na { color: var(--dim); }
 @media (max-width: 1320px) { .pcards.pcards-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 1100px) { .pcards { grid-template-columns: 1fr; }  }
 @media (max-width: 720px) { .pcards.pcards-4 { grid-template-columns: minmax(0, 1fr); } }
-
-/* 飞书式运营看板：统一所有页面，窄屏导航按内容高度排列 */
-:root { --bg:#f3f4f6; --card:#fff; --inner:#fff; --line:#e6e8ee; --fg:#303640; --muted:#606b7b; --dim:#929aa8; --ink:#3567e8; --green:#3567e8; --mint:#89a9ff; --mint-bg:#edf2ff; --radius:12px; --radius-in:8px; --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; }
-.shell { grid-template-rows:auto; align-items:start; }
-.side { background:#fff; border-right:1px solid var(--line); }
-.brand-name { font-size:21px; color:var(--fg); }
-.side a.nav { border-radius:7px; flex:none; min-height:42px; }
-.side a.nav.on { background:#eaf0ff; color:#3567e8; }
-main { max-width:1600px; padding:28px 30px 64px; }
-.card { border:1px solid var(--line); background:#fff; box-shadow:none; }
-.panel { background:#fff; }
-.tab-group { border-radius:7px; background:#f7f8fa; }
-.tab-group button { border-radius:5px; }
-.tab-group button[aria-pressed="true"] { background:#eaf0ff; color:#3567e8; }
-.stats { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:16px; }
-.stats .stat { grid-column:span 3; border:1px solid var(--line); border-radius:12px; background:#fff; padding:22px; min-height:130px; }
-.stats .stat:nth-child(-n+3) { grid-column:span 4; }
-.stat .label { color:#667182; font-size:14px; }
-.stat .value { color:#303640; font-size:36px; margin-top:12px; }
-.stat .value small { display:block; font-size:11px; font-weight:400; color:#929aa8; margin-top:4px; }
-.ops-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin:20px 0; }
-.ops-grid .card { padding:20px; }
-.ops-grid h3 { font-size:14px; margin:0 0 5px; }
-.ops-grid p,.ops-note { font-size:12px; color:var(--dim); }
-.ops-ranks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
-.ops-rank { padding:18px; border:1px solid var(--line); border-radius:10px; }
-.ops-rank h3 { margin:0 0 12px; font-size:14px; }
-button.ops-row { width:100%; display:flex; align-items:center; gap:10px; padding:10px 0; border:0; border-bottom:1px solid #f0f2f5; background:white; color:var(--fg); font:inherit; text-align:left; cursor:pointer; }
-.ops-row:hover { color:var(--green); }.ops-row i { flex:1; background:#f2f5fb; height:6px; border-radius:4px; }.ops-row i b { display:block; height:100%; background:#7093f3; border-radius:4px; }.ops-row strong { min-width:64px; text-align:right; font-weight:500; }
-#detail-dashboard { margin-bottom:22px; } .detail-heading { margin:22px 0 14px; font-size:17px; }
-#v-overview { display:flex; flex-direction:column; }
-#ov-stats { order:-4; } #overview-trend { order:-3; margin-top:20px; } #overview-averages { order:-2; } #ov-rank-title { order:-1; } #ov-rank-card { order:-1; }
-@media(max-width:900px) { .shell { grid-template-rows:max-content auto; align-content:start; } .side { height:auto; min-height:0; align-items:center; align-self:start; padding:10px 14px; border-right:0; border-bottom:1px solid var(--line); } .side a.nav,.side a.jump { height:42px; align-self:center; } main { padding:20px 16px 50px; } .stat .value { font-size:28px; } }
-@media(max-width:600px) { .stats .stat,.stats .stat:nth-child(-n+3) { grid-column:span 6; } .stats .stat:nth-child(3) { grid-column:span 12; } .ops-grid,.ops-ranks { grid-template-columns:1fr; } .stat .value { font-size:26px; } }
-
 </style>
 </head>
 <body>
@@ -455,7 +420,7 @@ button.ops-row { width:100%; display:flex; align-items:center; gap:10px; padding
   <div class="brand"><div class="brand-name">作品数据分析</div><div class="brand-sub"><div>小红书 · 抖音 · 视频号 · B站</div><div>TikTok · Instagram · YouTube · X</div></div></div>
   <a class="nav" href="#overview" data-view="overview"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1.5"/><rect x="9" y="2" width="5" height="5" rx="1.5"/><rect x="2" y="9" width="5" height="5" rx="1.5"/><rect x="9" y="9" width="5" height="5" rx="1.5"/></svg>总览</a>
   <a class="nav" href="#compare" data-view="compare"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="2" width="11" height="12" rx="2"/><path d="M2.5 6.5h11M7 6.5V14"/></svg>作品对比</a>
-  <a class="nav" href="#diagnose" data-view="diagnose"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12l-4.5 5.5V13L6.5 14V8.5z"/></svg>作品详情</a>
+  <a class="nav" href="#diagnose" data-view="diagnose"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12l-4.5 5.5V13L6.5 14V8.5z"/></svg>单条诊断</a>
   <a class="nav" href="#pending" data-view="pending"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 4.5V8l2.5 1.5"/></svg>发布清单</a>
   <div class="spacer"></div>
   <a class="jump" id="jump" href="/" target="_top" hidden>返回启动台 <span aria-hidden="true">→</span></a>
@@ -483,7 +448,7 @@ button.ops-row { width:100%; display:flex; align-items:center; gap:10px; padding
     <span class="member-bar-label">成员</span>
     <div class="tab-group" id="member-select" role="group" aria-label="按成员筛选"></div>
   </div>
-  <div class="diagnose-pickers" id="diagnose-pickers" role="group" aria-label="筛选作品内容" hidden>
+  <div class="diagnose-pickers" id="diagnose-pickers" role="group" aria-label="筛选诊断内容" hidden>
     <label>平台<select id="pick-platform"></select></label>
     <div class="calendar-field" id="diagnose-calendar-field">
       <span>发布时间</span>
@@ -501,7 +466,7 @@ button.ops-row { width:100%; display:flex; align-items:center; gap:10px; padding
   <p class="empty" id="media-empty" hidden></p>
 
   <section class="view" id="v-overview">
-    <div class="stats" id="ov-stats"></div><div id="overview-averages" class="ops-grid"><section class="card"><h3>按平台平均曝光</h3><p>有可用指标的已发布记录平均值</p><div class="chart" id="ov-average-platform"></div></section><section class="card"><h3>按内容形式平均曝光</h3><p>当前账号／成员范围，比较视频与图文</p><div class="chart" id="ov-average-type"></div></section></div>
+    <div class="stats" id="ov-stats"></div>
     <h2 class="sec">各平台表现 <span class="count" id="ov-scope">全部已采集作品</span></h2>
     <div id="ov-platforms">
       <h3 class="platform-group" id="ov-international-title">国外</h3>
@@ -513,9 +478,9 @@ button.ops-row { width:100%; display:flex; align-items:center; gap:10px; padding
     <section class="card" id="ov-rank-card" hidden>
       <div class="panel"><div class="rank-list" id="ov-rank"></div></div>
     </section>
-
-    <section class="card" id="overview-trend">
-      <div class="card-head"><h3>每日曝光趋势</h3><p>按发布日期汇总累计曝光；缺少曝光时使用浏览／播放量</p></div><div class="panel"><div class="chart" id="c-exposure"></div></div>
+    <h2 class="sec">每日曝光趋势 <span class="count">按发布日期聚合，当天发布内容的累计曝光</span></h2>
+    <section class="card">
+      <div class="panel"><div class="chart" id="c-exposure"></div></div>
     </section>
     <h2 class="sec">粉丝数趋势</h2>
     <section class="card">
@@ -634,7 +599,7 @@ button.ops-row { width:100%; display:flex; align-items:center; gap:10px; padding
 
   <section class="view" id="v-diagnose" hidden>
     <div class="tags" id="d-tags"></div>
-    <div id="detail-dashboard"></div><div id="d-copy"></div>
+    <div id="d-copy"></div>
     <div class="pcards" data-video id="d-funnels"></div>
     <h2 class="sec" data-video>观众在哪一秒离开</h2>
     <div class="grid" data-video>
@@ -863,56 +828,32 @@ function renderMemberBar() {
       `<button type="button" data-value="${esc(key)}" aria-pressed="${key === memberFilter}">${esc(label)}</button>`).join("");
 }
 function renderMemberRank() {
-  const title = document.getElementById("ov-rank-title"), card = document.getElementById("ov-rank-card");
+  const title = document.getElementById("ov-rank-title");
+  const card = document.getElementById("ov-rank-card");
+  // 排行也是成员维度，只在马甲号视图出现
   title.hidden = card.hidden = accountType !== "alt" || MEMBER_CONFIG.members.length === 0;
   if (card.hidden) return;
-  title.firstChild.textContent = "成员单项排行 ";
-  document.getElementById("ov-rank-note").textContent = "仅统计已采集的马甲号国内平台；点击成员查看对应看板";
+  document.getElementById("ov-rank-note").textContent = `满分 ${fmt(scoreMax(), 1)} · 仅统计马甲号国内平台`;
+  const list = document.getElementById("ov-rank");
   const rows = memberRanking();
-  document.getElementById("ov-rank").className = "ops-ranks";
-  document.getElementById("ov-rank").innerHTML = SCORE_METRICS.map(([key,label]) => {
-    const sorted = [...rows].sort((a,b) => (b.totals[key] ?? -1) - (a.totals[key] ?? -1));
-    const max = Math.max(1,...sorted.map(row => row.totals[key] || 0));
-    return `<section class="ops-rank"><h3>成员总${label}</h3>${sorted.map((row,i) => `<button type="button" class="ops-row" data-member="${esc(row.member.id)}"><span>${i+1}</span><span>${esc(row.member.name)}</span><i><b style="width:${(row.totals[key] || 0)/max*100}%"></b></i><strong>${fmt(row.totals[key])}</strong></button>`).join("")}</section>`;
+  if (!rows.some((row) => row.count)) {
+    list.innerHTML = `<p class="rank-empty">还没有马甲号的国内平台数据。排行按成员绑定的账号主页归属，采集到数据后自动生成。</p>`;
+    return;
+  }
+  const top = Math.max(...rows.map((row) => row.score), 0);
+  list.innerHTML = rows.map((row, index) => {
+    const width = top ? Math.max(row.score / top * 100, row.score > 0 ? 3 : 0) : 0;
+    const detail = `${row.member.name}：` + SCORE_METRICS.map(([key, label]) =>
+      `${label} ${fmt(row.totals[key])}`).join(" · ") + ` · ${row.count} 条发布`;
+    return `<div class="rank-row${memberFilter === row.member.id ? " on" : ""}" title="${esc(detail)}">
+      <span class="rank-no">${index + 1}</span>
+      <span class="rank-name">${esc(row.member.name)}</span>
+      <span class="rank-track"><i style="width:${width.toFixed(1)}%"></i></span>
+      <span class="rank-score">${row.score.toFixed(2)}</span>
+      <span class="rank-count">${row.count} 条</span>
+    </div>`;
   }).join("");
 }
-function scopedPendingCount() {
-  try {
-    const states = publicationStates();
-    return readPendingEntries().filter(entry => (states[entry.id]?.status || "pending") === "pending" &&
-      (entry.account_type || (entry.home ? "alt" : "official")) === accountType &&
-      (!memberFilter || memberByHome(entry.home) === memberFilter)).length;
-  } catch { return null; }
-}
-function dashboardStats(list, pending = null, detail = false) {
-  const exposure = scoreTotal(list,"impressions");
-  const fields = [[detail ? "已发布平台数" : "已发布数",list.length,"按平台发布记录计数"], ["待发布数",pending,detail ? "单条作品未关联发布计划" : "已录入的本地发布计划，不含示例"], ["总曝光",exposure,"缺少曝光时使用浏览／播放量"], ...[["总点赞","likes"],["总收藏","collects"],["总转发","shares"],["总评论","comments"]].map(([label,key]) => [label,scoreTotal(list,key),list.length ? "已采集的累计值；缺失不作零" : "暂无数据"] )];
-  return fields.map(([label,value,note]) => `<div class="stat"><div class="label">${label}</div><div class="value">${fmt(value)}<small>${note}</small></div></div>`).join("");
-}
-function averageChart(id, list, group, label) {
-  const map = new Map();
-  for(const post of list) { const v=scoreValue(post,"impressions"); if(v==null) continue; const key=group(post); const g=map.get(key)||[]; g.push(v); map.set(key,g); }
-  if(!map.size) return empty(id,"当前暂无数据");
-  const rows=[...map].map(([name,v])=>({name,value:v.reduce((a,b)=>a+b,0)/v.length})).sort((a,b)=>a.value-b.value);
-  const b=base();
-  draw(id,{...b,legend:{show:false},grid:{left:85,right:65,top:16,bottom:30},xAxis:{type:"value",axisLabel:{color:css("--dim")},splitLine:{lineStyle:{color:css("--line")}}},yAxis:{type:"category",data:rows.map(r=>r.name),axisTick:{show:false},axisLine:{show:false}},series:[{type:"bar",name:label,barMaxWidth:22,itemStyle:{color:css("--green"),borderRadius:[0,4,4,0]},label:{show:true,position:"right",formatter:p=>fmt(p.value)},data:rows.map(r=>r.value)}]});
-}
-function renderAverages(platformId,typeId,list,typeList=list) {
-  averageChart(platformId,list,p=>PF[p.platform]||p.platform,"平均曝光");
-  averageChart(typeId,typeList,p=>p.media_type==="image"?"图文":"视频","平均曝光");
-}
-function renderDetailDashboard(work) {
- for(const id of ["detail-exposure","detail-platform","detail-type"]) { charts[id]?.dispose(); delete charts[id]; }
- const host=document.getElementById("detail-dashboard");
- host.innerHTML=`<h2 class="detail-heading">作品数据看板</h2><div class="stats">${dashboardStats(work.posts,null,true)}</div><section class="card" style="margin-top:20px"><div class="card-head"><h3>每日曝光趋势</h3><p>按采集日期展示此作品累计曝光／播放快照，非每日新增曝光</p></div><div class="panel"><div class="chart" id="detail-exposure"></div></div></section><div class="ops-grid"><section class="card"><h3>按平台平均曝光</h3><div class="chart" id="detail-platform"></div></section><section class="card"><h3>按内容形式平均曝光</h3><div class="chart" id="detail-type"></div></section></div>`;
- renderAverages("detail-platform","detail-type",work.posts);
- const groups=new Map();
- for(const post of work.posts) for(const item of post.history||[]) { const value=item.impressions??item.views; if(value==null||item.fetched_at==null) continue; const day=exposureDate.format(item.fetched_at); if(!groups.has(day)) groups.set(day,new Map()); const map=groups.get(day); const old=map.get(post); if(!old||old.time<item.fetched_at) map.set(post,{time:item.fetched_at,value}); }
- if(!groups.size) return empty("detail-exposure","暂无历史采集快照，后续采集后可查看趋势");
- const days=[...groups.keys()].sort();const b=base();
- draw("detail-exposure",{...b,legend:{show:false},xAxis:{...b.xAxis,type:"category",data:days},yAxis:{...b.yAxis,type:"value"},series:work.posts.map(post=>({name:PF[post.platform],type:"line",connectNulls:false,data:days.map(day=>groups.get(day).get(post)?.value??null)})),legend:{show:true}});
-}
-document.getElementById("ov-rank").addEventListener("click",event=>{const button=event.target.closest("[data-member]");if(!button)return;const url=new URL(location.href);url.searchParams.set("account","alt");url.searchParams.set("member",button.dataset.member);url.hash="overview";history.pushState(null,"",url);applyFilters();});
 // 每日曝光趋势：按发布日期聚合，是当天发布内容的曝光累计值之和，不是每日增量
 function renderExposureTrend() {
   const byDate = new Map();
@@ -1176,8 +1117,17 @@ function engagementChange(posts, metric, start, end) {
 function renderOverview() {
   const works = D.works;
   document.getElementById("ov-scope").textContent = `${ACCOUNT_LABELS[accountType] || ""} · 全部已采集作品`;
-  document.getElementById("ov-stats").innerHTML = dashboardStats(posts, scopedPendingCount());
-  renderAverages("ov-average-platform", "ov-average-type", posts, allWorks.flatMap(work => work.posts).filter(post => (post.account_type || "official") === accountType && (!memberFilter || memberOf(post) === memberFilter)));
+  const viewCoverage = posts.filter((post) => post.latest.views != null).length;
+  const trackedPlatforms = PKEYS.filter((platform) => followerCount(platform) != null);
+  document.getElementById("ov-stats").innerHTML = [
+    ["已采集发布", fmt(posts.length), "<small>条</small>"],
+    ["已采集浏览 / 播放", fmt(sum(posts, "views")), `<small>${viewCoverage}/${posts.length} 条有数据</small>`],
+    ["已采集粉丝数合计", fmt(trackedPlatforms.length
+      ? trackedPlatforms.reduce((total, platform) => total + followerCount(platform), 0) : null),
+      `<small>${trackedPlatforms.length}/${PKEYS.length} 个平台</small>`],
+    ["每个作品平均发布平台数", fmt(works.length ? posts.length / works.length : null, 1),
+      "<small>按自动配对统计</small>"],
+  ].map(([label, value, detail], index) => `<div class="stat${index === 1 ? " accent" : ""}"><div class="label">${label}</div><div class="value">${value}${detail}</div></div>`).join("");
   const platformCard = (k) => {
     const g = posts.filter((p) => p.platform === k);
     const followers = followerCount(k);
@@ -1708,7 +1658,7 @@ function renderCompare(page = 1) {
     </div>`;
   };
   const header = `<thead><tr><th>作品</th><th><span class="compare-column-label">${comparePlatform ? "发布时间" : "首发"}</span></th>${keys.map((key) => `<th><span class="compare-column-label">${PF[key]}</span></th>`).join("")}${comparePlatform ? "" : `<th>合计${totalMetric === "views" ? "浏览 / 播放" : totalMetric === "likes" ? "点赞" : metricLabels[totalMetric]}</th>`}</tr></thead>`;
-
+  const scores = workScoreMap(D.works);
   const pageCount = Math.max(1, Math.ceil(entries.length / comparePageSize));
   comparePage = Math.min(pageCount, Math.max(1, page));
   const start = (comparePage - 1) * comparePageSize;
@@ -1721,7 +1671,10 @@ function renderCompare(page = 1) {
   const rows = entries.slice(start, end).map(({ work, selected, scopedPosts }) => {
     const cover = scopedPosts.map((post) => thumbnailUrl(post.thumbnail_url)).find(Boolean);
     const thumbnail = selected ? postGallery(selected) : cover ? imageButton(cover) : "";
-    const scoreBadge = "";
+    const score = scores.get(work.work_id) || 0;
+    const scoreBadge = score > 0
+      ? `<span class="work-score" title="作品得分：曝光/点赞/收藏/转发/评论 五项按全体作品最大值归一化后加权，满分 ${fmt(scoreMax(), 1)}">${score.toFixed(1)} 分</span>`
+      : "";
     return `<tr data-id="${esc(work.work_id)}"><td>${thumbnail}${scoreBadge}</td>
       <td><span class="compare-date-value">${dt(selected ? selected.post_time : work.first_post_time)}</span></td>${keys.map((key) => {
         const post = work.posts.find((item) => item.platform === key);
@@ -1741,7 +1694,7 @@ function renderCompare(page = 1) {
   });
 }
 
-/* ---------- 作品详情 ---------- */
+/* ---------- 单条诊断 ---------- */
 // 漏斗：按观众的观看顺序，每一步对应一类要改的东西
 const STAGES = [
   { key: "cover_click_rate", name: "点进来", sub: "封面点击率", tip: "改封面和标题：信息点前置、字更大、给出具体收益" },
@@ -1806,7 +1759,7 @@ function renderDiagnose() {
     const emptyState = document.getElementById("media-empty");
     emptyState.hidden = false;
     emptyState.textContent = from && to && from > to ? "发布时间起始日期须早于或等于截止日期" : "暂无符合筛选条件的内容";
-    document.getElementById("title").textContent = "作品详情";
+    document.getElementById("title").textContent = "单条诊断";
     document.getElementById("meta").textContent = "";
     return;
   }
@@ -1828,7 +1781,6 @@ function renderDiagnose() {
   const post = selectedPost(selected);
   const w = post ? { ...selected, title: post.title || post.subtitle || "无标题",
     first_post_time: post.post_time, duration_sec: post.duration_sec, posts: [post] } : selected;
-  renderDetailDashboard(w);
   // 流量来源、观众画像、播放趋势只有国内平台提供，海外平台不展示这三块
   const insightPosts = w.posts.filter((item) => DOMESTIC_PLATFORMS.has(item.platform));
   const showInsights = insightPosts.length > 0;
@@ -2172,7 +2124,7 @@ publicationForm.addEventListener("submit", async (event) => {
   }
   const state = String(fields.get("state") || "pending");
   const published = state === "published";
-  const entry = { id: crypto.randomUUID(), account_type: accountType, title, platform, date: fields.get("date"),
+  const entry = { id: crypto.randomUUID(), title, platform, date: fields.get("date"),
     copy: String(fields.get("copy") || "").trim(),
     media: String(fields.get("media") || "video"),
     home: String(fields.get("home") || "").trim(),
@@ -2373,7 +2325,7 @@ function route() {
     document.getElementById("title").textContent = TITLES.pending;
     document.getElementById("meta").textContent = "";
   } else if (!hasWorks || view !== "diagnose") {
-    document.getElementById("title").textContent = mediaName + " · " + (TITLES[view] || "作品详情");
+    document.getElementById("title").textContent = mediaName + " · " + (TITLES[view] || "单条诊断");
     document.getElementById("meta").textContent = `数据更新于 ${dt(D.generated_at)}`;
   }
   if (!canShowView) return;
