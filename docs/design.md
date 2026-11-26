@@ -24,7 +24,7 @@
 | 强调色（好） | `--green`、`--mint-bg` | `#2f7d4f`，浅底 `#d9f5de` |
 | 警示色（差） | `--warn` | `#d2593f` |
 | 圆角 | `--radius` / `--radius-in` | 外层 22px，内层 16px |
-| 平台色 | `--p-xhs` / `--p-douyin` / `--p-channels` | `#eb6834` / `#2a78d6` / `#1baf7a` |
+| 平台色 | `--p-xhs` / `--p-douyin` / `--p-channels` / `--p-tiktok` / `--p-instagram` / `--p-youtube` / `--p-x` | `#eb6834` / `#2a78d6` / `#f59e0b` / `#168879` / `#ac447f` / `#e5484d` / `#696f7a` |
 
 字体用 Plus Jakarta Sans（Google Fonts），中文回退到苹方或微软雅黑。标题字重 600，字距稍微收紧（`letter-spacing: -0.02em`）。
 

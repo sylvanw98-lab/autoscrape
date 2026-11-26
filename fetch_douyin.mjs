@@ -1,11 +1,12 @@
-// 用 ego-browser 抓抖音创作者中心近 30 天视频作品的数据，存到 data/raw/douyin/。
+// 用 ego-browser 抓抖音创作者中心近 30 天作品的数据，存到 data/raw/<账号类型>/douyin/。
 // 运行：通过 update.py（ego-browser nodejs 的工作目录是 /，读不到环境变量，所以由它把项目路径 ROOT 写在脚本开头）。接口带页面签名，走页面加载 + CDP 读响应体。
 const fs = await import("node:fs/promises");
-const RAW = ROOT + "data/raw/douyin/"; // ROOT 由 update.py 在脚本开头注入
+const RAW = ROOT + "data/raw/" + ACCOUNT_TYPE + "/douyin/"; // ROOT / ACCOUNT_TYPE 由 update.py 在脚本开头注入
 await fs.mkdir(RAW, { recursive: true });
 
 const task = await taskSpace("multi-platform video data");
 const page = task.page("p1");
+await captureFollowers(page, fs, ROOT, PLATFORM);
 await page.cdp("Network.enable", {});
 
 async function bodies(re) {
@@ -25,7 +26,7 @@ const listRes = (await bodies(/web\/api\/creator\/item\/list/))[0]?.json;
 if (!listRes?.items) throw new Error("没拿到抖音作品列表，可能需要在 ego lite 里重新登录抖音创作者中心");
 const since = Date.now() / 1000 - 30 * 86400;
 // shortcut: 只取列表第一页（count=10），近 30 天发得多了要翻页
-const items = listRes.items.filter((i) => i.video_info && Number(i.create_time) >= since);
+const items = listRes.items.filter((i) => Number(i.create_time) >= since);
 const fetchedAt = Date.now();
 await fs.writeFile(RAW + "_list.json", JSON.stringify({ fetchedAt, items }));
 
@@ -43,6 +44,5 @@ for (const it of items) {
     out[key] = json;
   }
   await fs.writeFile(RAW + it.id + ".json", JSON.stringify(out));
-  console.log("douyin ok", it.id, it.description.slice(0, 20), Object.keys(out).join(","));
+  console.log("douyin ok", it.id, (it.description || "").slice(0, 20), Object.keys(out).join(","));
 }
-// 不关窗口：后面的脚本接着用同一个窗口，最后由 fetch_channels.mjs 关闭

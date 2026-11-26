@@ -1,12 +1,13 @@
-// 用 ego-browser 抓取小红书创作者后台的视频笔记数据，存到 data/raw/。
+// 用 ego-browser 抓取小红书创作者后台的笔记数据，存到 data/raw/<账号类型>/。
 // 运行：通过 update.py（ego-browser nodejs 的工作目录是 /，读不到环境变量，所以由它把项目路径 ROOT 写在脚本开头）
 // 接口需要页面签名，直接 fetch 会 406，所以走页面加载 + CDP 读响应体。
 const fs = await import("node:fs/promises");
-const RAW = ROOT + "data/raw/"; // ROOT 由 update.py 在脚本开头注入
+const RAW = ROOT + "data/raw/" + ACCOUNT_TYPE + "/"; // ROOT / ACCOUNT_TYPE 由 update.py 在脚本开头注入
 await fs.mkdir(RAW, { recursive: true });
 
 const task = await taskSpace("multi-platform video data");
 const page = task.page("p1");
+await captureFollowers(page, fs, ROOT, PLATFORM);
 await page.cdp("Network.enable", {});
 
 async function capture(url, re) {
@@ -35,7 +36,7 @@ if (!notes) throw new Error("没拿到笔记列表，可能未登录：" + JSON.
 const fetchedAt = Date.now();
 await fs.writeFile(RAW + "_list.json", JSON.stringify({ fetchedAt, notes }));
 
-for (const n of notes.filter((n) => n.type === 2)) {
+for (const n of notes) {
   const out = await capture("https://creator.xiaohongshu.com/statistics/note-detail?noteId=" + n.id, /datacenter\/note\/(base|audience|analyze\/audience)/);
   out.fetchedAt = fetchedAt;
   await fs.writeFile(RAW + n.id + ".json", JSON.stringify(out));

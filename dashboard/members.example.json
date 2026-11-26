@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "updated_at": "2026-11-26",
+  "weights": {
+    "impressions": 0.5,
+    "likes": 1,
+    "collects": 3,
+    "shares": 3,
+    "comments": 1.5
+  },
+  "members": [
+    { "id": "member-a", "name": "成员 A", "accounts": [{ "platform": "xhs", "home": "https://www.xiaohongshu.com/user/profile/…" }] },
+    { "id": "member-b", "name": "成员 B", "accounts": [] }
+  ]
+}

@@ -11,3 +11,7 @@ dashboard/publish.html
 .claude/
 __pycache__/
 .DS_Store
+
+# 本机名单与 Agent 记忆，不进公开仓库
+dashboard/members.json
+.workbuddy/

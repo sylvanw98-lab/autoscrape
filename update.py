@@ -1,7 +1,8 @@
-"""一键更新（Mac / Windows 通用）：抓小红书、抖音、视频号 → 写入 data/videos.db → 导出看板数据 →（可选）上传到你自己的网站。
+"""一键更新（Mac / Windows 通用）：采集小红书、抖音、视频号并导入 TikTok、Instagram、YouTube 和 X → 写入 data/videos.db → 导出看板数据 →（可选）上传到你自己的网站。
 
 运行：Mac `python3 update.py`，Windows `py update.py`。
 个人设置写在 config.env（不进 Git，参考 config.example.env）；不配置就只在本地更新，用 preview 看。
+默认采集官方号；采集马甲号时先在 ego lite 切换到马甲号登录，再在 config.env 设 ACCOUNT_TYPE="alt"。
 某个平台抓失败（多半是登录过期）不影响其他平台，照样入库和上传，最后以退出码 2 结束，好让定时任务知道要提醒。
 """
 import json
@@ -14,7 +15,9 @@ from datetime import datetime
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-FETCHERS = [("fetch.mjs", "小红书"), ("fetch_douyin.mjs", "抖音"), ("fetch_channels.mjs", "视频号")]
+FETCHERS = [("fetch.mjs", "小红书", "xhs"), ("fetch_douyin.mjs", "抖音", "douyin"),
+            ("fetch_channels.mjs", "视频号", "channels")]
+ACCOUNT_LABELS = {"official": "官方号", "alt": "马甲号"}
 
 
 def load_config():
@@ -29,9 +32,13 @@ def load_config():
     return cfg
 
 
-def fetch(script, ego):
+def fetch(script, platform, ego, account_type):
     # ego-browser nodejs 的工作目录不是项目目录，也读不到环境变量，所以把项目路径写在脚本最前面一起送进去
-    code = f"const ROOT = {json.dumps(HERE.as_posix() + '/')};\n" + (HERE / script).read_text(encoding="utf-8")
+    code = (f"const ROOT = {json.dumps(HERE.as_posix() + '/')};\n"
+            f"const PLATFORM = {json.dumps(platform)};\n"
+            f"const ACCOUNT_TYPE = {json.dumps(account_type)};\n")
+    code += (HERE / "fetch_followers.mjs").read_text(encoding="utf-8")
+    code += (HERE / script).read_text(encoding="utf-8")
     return subprocess.run([ego, "nodejs"], input=code.encode("utf-8")).returncode == 0
 
 
@@ -45,13 +52,19 @@ def main():
         print("找不到 ego-browser 命令：请先安装 ego lite 并完成首次引导")
         return 1
 
-    failed = [name for script, name in FETCHERS if not fetch(script, ego)]
-    if len(failed) == len(FETCHERS):
-        # 全没抓到（多半是网络或 ego lite 没起来），库里没有新东西，不必再上传
-        print("抓取失败：" + " ".join(failed))
-        return 2
+    account_type = (cfg.get("ACCOUNT_TYPE") or "official").strip().lower()
+    if account_type not in ACCOUNT_LABELS:
+        print(f"ACCOUNT_TYPE 只能是 official（官方号）或 alt（马甲号），当前是 {account_type}")
+        return 1
+    print(f"本次采集账号类型：{ACCOUNT_LABELS[account_type]}")
+
+    failed = [name for script, name, platform in FETCHERS if not fetch(script, platform, ego, account_type)]
     if subprocess.run([sys.executable, "ingest.py"]).returncode != 0:
         return 1
+    if len(failed) == len(FETCHERS):
+        # 国内平台全部采集失败时跳过上传
+        print("抓取失败：" + " ".join(failed))
+        return 2
 
     if cfg.get("UPLOAD_URL"):
         key_file = HERE / ".upload_key"

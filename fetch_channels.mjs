@@ -1,12 +1,13 @@
-// 用 ego-browser 抓视频号助手近 30 天视频的数据，存到 data/raw/channels/。
+// 用 ego-browser 抓视频号助手近 30 天视频的数据，存到 data/raw/<账号类型>/channels/。
 // 运行：通过 update.py（ego-browser nodejs 的工作目录是 /，读不到环境变量，所以由它把项目路径 ROOT 写在脚本开头）
 // 先点开「单篇视频」让页面发一次 post_list，记下它的请求头和参数，再用同样的头在页面里调列表和单条详情接口。
 const fs = await import("node:fs/promises");
-const RAW = ROOT + "data/raw/channels/"; // ROOT 由 update.py 在脚本开头注入
+const RAW = ROOT + "data/raw/" + ACCOUNT_TYPE + "/channels/"; // ROOT / ACCOUNT_TYPE 由 update.py 在脚本开头注入
 await fs.mkdir(RAW, { recursive: true });
 
 const task = await taskSpace("multi-platform video data");
 const page = task.page("p1");
+await captureFollowers(page, fs, ROOT, PLATFORM);
 await page.cdp("Network.enable", {});
 await page.goto("https://channels.weixin.qq.com/platform/statistic/post");
 // 登录过期时页面停在扫码页，等不到这个按钮；网慢时也最多等 20 秒
