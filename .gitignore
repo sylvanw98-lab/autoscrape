@@ -1,8 +1,15 @@
 # 个人数据和密钥，永远不进仓库
 data/
+**/data/
 .upload_key
+**/.upload_key
 config.env
+**/config.env
 dashboard/data.js
+**/dashboard/data.js
+**/outputs/
+**/node_modules/
+**/.wrangler/
 # 个人用的文件
 AGENTS.md
 后台改版说明.md
@@ -10,8 +17,9 @@ AGENTS.md
 dashboard/publish.html
 .claude/
 __pycache__/
+**/__pycache__/
 .DS_Store
-
 # 本机名单与 Agent 记忆，不进公开仓库
 dashboard/members.json
 .workbuddy/
+**/.workbuddy/
