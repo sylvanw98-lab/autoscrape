@@ -6,6 +6,29 @@
 <title>作品数据分析</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script>document.write('<script src="data.js?v=' + Date.now() + '"><\/script>');</script>
+<script>
+// 版本自检：浏览器可能缓存了旧的 index.html，导致"改了没生效"。
+// 每次改动 index.html 时把 LOCAL 的值改成新的时间戳；页面启动时向服务器要一份，
+// 发现服务器上的版本比自己新，就带上版本参数重载一次。
+(function () {
+  var LOCAL = "2026-11-27T10:06-716ac41e";
+  var KEY = "vdd-build";
+  try {
+    localStorage.setItem(KEY, LOCAL);
+    fetch("index.html?v=" + Date.now(), { cache: "no-store" }).then(function (r) {
+      return r.text();
+    }).then(function (text) {
+      var m = text.match(/var LOCAL = "([^"]+)"/);
+      if (!m || m[1] === LOCAL) return;
+      localStorage.setItem(KEY, m[1]);
+      // 加版本参数绕开浏览器缓存，再回到原来看的页面
+      var url = new URL(location.href);
+      url.searchParams.set("b", m[1]);
+      location.href = url.toString();
+    }).catch(function () {});
+  } catch (e) {}
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
 <style>
@@ -24,6 +47,8 @@
 * { box-sizing: border-box; }
 /* hidden 必须真的消失：.card/.sec/.member-bar 等都带 display，会盖掉浏览器默认的 [hidden] */
 [hidden] { display: none !important; }
+/* 整体缩放 80%：zoom 会让排版按缩放后的尺寸重新计算，比 transform: scale 更不容易破版 */
+html { zoom: 0.8; }
 html, body { margin: 0; min-height: 100%; }
 body { font: 14px/1.6 var(--sans); color: var(--fg); background: var(--bg); -webkit-font-smoothing: antialiased; }
 a { color: var(--fg); text-decoration: none; }
@@ -46,7 +71,8 @@ a { color: var(--fg); text-decoration: none; }
 .side a.jump:hover { color: var(--green); }
 .side a.jump[hidden] { display: none; }
 
-main { padding: 30px 40px 80px; max-width: 1240px; width: 100%; min-width: 0; }
+/* 缩放 80% 后，max-width 要按 1/0.8 补偿（1240 → 1550），版式比例才和原来一致 */
+main { padding: 30px 40px 80px; max-width: 1550px; width: 100%; min-width: 0; }
 html:has(:is(#v-compare, #v-pending):not([hidden])) { scrollbar-gutter: stable; }
 main:has(> :is(#v-compare, #v-pending):not([hidden])) { max-width: none; padding-inline: clamp(16px, 2vw, 32px); }
 .compare-view-tabs { margin: 0; }
@@ -158,6 +184,7 @@ h2.sec .count { font: 600 12px var(--sans); color: var(--ink); background: var(-
 .stat .label { font-size: 13px; font-weight: 500; color: var(--muted); }
 .stat .value { font: 500 32px/1.1 var(--sans); letter-spacing: -0.02em; margin-top: 14px; font-variant-numeric: tabular-nums; }
 .stat .value small { font-size: 13px; font-weight: 500; color: var(--dim); margin-left: 4px; letter-spacing: 0; }
+.stat .value small.sub { display: block; margin: 8px 0 0; }
 .stat.accent { background: linear-gradient(160deg, #eef1fb, #e3f6e7); }
 .stat.accent .value { color: var(--ink); }
 
@@ -478,8 +505,8 @@ td.na { color: var(--dim); }
     <section class="card" id="ov-rank-card" hidden>
       <div class="panel"><div class="rank-list" id="ov-rank"></div></div>
     </section>
-    <h2 class="sec">每日曝光趋势 <span class="count">按发布日期聚合，当天发布内容的累计曝光</span></h2>
-    <section class="card">
+    <h2 class="sec" id="ov-exposure-title">每日曝光趋势 <span class="count">按发布日期聚合，当天发布内容的累计曝光</span></h2>
+    <section class="card" id="ov-exposure-card">
       <div class="panel"><div class="chart" id="c-exposure"></div></div>
     </section>
     <h2 class="sec">粉丝数趋势</h2>
@@ -855,7 +882,12 @@ function renderMemberRank() {
   }).join("");
 }
 // 每日曝光趋势：按发布日期聚合，是当天发布内容的曝光累计值之和，不是每日增量
+// 只在马甲号下展示：官方号是整体大盘，曝光按发布日期聚合没有参考意义
 function renderExposureTrend() {
+  const title = document.getElementById("ov-exposure-title");
+  const card = document.getElementById("ov-exposure-card");
+  title.hidden = card.hidden = accountType !== "alt";
+  if (card.hidden) return;
   const byDate = new Map();
   for (const post of posts) {
     if (post.post_time == null) continue;
@@ -1119,15 +1151,23 @@ function renderOverview() {
   document.getElementById("ov-scope").textContent = `${ACCOUNT_LABELS[accountType] || ""} · 全部已采集作品`;
   const viewCoverage = posts.filter((post) => post.latest.views != null).length;
   const trackedPlatforms = PKEYS.filter((platform) => followerCount(platform) != null);
-  document.getElementById("ov-stats").innerHTML = [
+  const likesCoverage = posts.filter((post) => post.latest.likes != null).length;
+  const collectsCoverage = posts.filter((post) => post.latest.collects != null).length;
+  const statCards = [
     ["已采集发布", fmt(posts.length), "<small>条</small>"],
     ["已采集浏览 / 播放", fmt(sum(posts, "views")), `<small>${viewCoverage}/${posts.length} 条有数据</small>`],
     ["已采集粉丝数合计", fmt(trackedPlatforms.length
       ? trackedPlatforms.reduce((total, platform) => total + followerCount(platform), 0) : null),
       `<small>${trackedPlatforms.length}/${PKEYS.length} 个平台</small>`],
-    ["每个作品平均发布平台数", fmt(works.length ? posts.length / works.length : null, 1),
-      "<small>按自动配对统计</small>"],
-  ].map(([label, value, detail], index) => `<div class="stat${index === 1 ? " accent" : ""}"><div class="label">${label}</div><div class="value">${value}${detail}</div></div>`).join("");
+    // 官方号看跨平台铺量，马甲号看成员自己的互动表现：同一张卡按账号类型换口径
+    accountType === "alt"
+      ? ["点赞量 / 收藏量", `${fmt(sum(posts, "likes"))} / ${fmt(sum(posts, "collects"))}`,
+        `<small class="sub">点赞 ${likesCoverage}/${posts.length} 条 · 收藏 ${collectsCoverage}/${posts.length} 条有数据</small>`]
+      : ["每个作品平均发布平台数", fmt(works.length ? posts.length / works.length : null, 1),
+        "<small>按自动配对统计</small>"],
+  ];
+  document.getElementById("ov-stats").innerHTML = statCards
+    .map(([label, value, detail], index) => `<div class="stat${index === 1 ? " accent" : ""}"><div class="label">${label}</div><div class="value">${value}${detail}</div></div>`).join("");
   const platformCard = (k) => {
     const g = posts.filter((p) => p.platform === k);
     const followers = followerCount(k);

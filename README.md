@@ -52,6 +52,10 @@ Mac 和 Windows 都能用。主要的命令差别是：Mac 上写 `python3`，Wi
 
 只想先看看效果的话，下载后运行 preview，再打开 http://localhost:8765 ，就能看到用示例数据画出的看板。
 
+**让同事也能看（同一局域网）**：`python3 preview.py --lan`，然后把提示里的 `http://<你的IP>:8765/index.html` 发给同事。preview.py 会带上禁用缓存的响应头，页面也会自检版本，改动后同事刷新就能看到最新的。
+
+改完 `dashboard/index.html` 后跑一次 `python3 bump_build.py`，更新页面里的版本号，避免同事的浏览器还显示旧页面。
+
 要接上自己的数据：
 
 1. 安装 ego lite，完成首次引导。之后在终端（Windows 上用 PowerShell）里输入 `ego-browser`，应该能看到它的帮助信息。
